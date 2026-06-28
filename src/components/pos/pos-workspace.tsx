@@ -8,6 +8,7 @@ import {
   FileText,
   Gem,
   LoaderCircle,
+  Pause,
   ScanBarcode,
   Search,
   ShoppingBag,
@@ -30,6 +31,7 @@ import { useRouter } from "next/navigation";
 import {
   closePosShiftAction,
   completePosCheckoutAction,
+  holdPosCartAction,
   lookupPosScanValueAction,
   openPosShiftAction,
 } from "@/app/actions/pos";
@@ -41,6 +43,9 @@ import {
   type PosCategoryOption,
   type PosCheckoutActionResult,
   type PosCustomerOption,
+  type PosHeldCartActionResult,
+  type PosHeldCartItem,
+  type PosHeldCartSummary,
   type PosManualPaymentMethod,
   type PosOperationalContext,
   type PosShiftActionState,
@@ -74,6 +79,9 @@ type CartContentProps = {
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
   onContinueToPayment: () => void;
+  canHoldCart: boolean;
+  holdCartDisabledReason: string;
+  onOpenHoldDialog: () => void;
 };
 
 type PosPaymentDraft = {
@@ -135,6 +143,20 @@ type CheckoutSuccessContentProps = {
 
 type PosPanelMode = "cart" | "payment" | "success";
 
+type StoredPosCartState = {
+  version: 1;
+  items: PosAvailableItem[];
+  customer: PosCustomerOption | null;
+  updatedAt: string;
+};
+
+type PendingHeldCartResumeState = {
+  version: 1;
+  heldCart: PosHeldCartSummary;
+  items: PosHeldCartItem[];
+  updatedAt: string;
+};
+
 const itemBackgrounds = [
   "bg-amber-50",
   "bg-orange-50",
@@ -147,6 +169,9 @@ const CART_FEEDBACK_AUTO_CLOSE_MS = 3500;
 const POS_WORKSPACE_COMMAND_EVENT = "asihjaya:pos-workspace-command";
 const POS_PENDING_COMMAND_STORAGE_KEY =
   "asihjaya:pos-workspace-pending-command";
+const POS_ACTIVE_CART_STORAGE_KEY = "asihjaya:pos-workspace-active-cart";
+const POS_PENDING_HELD_CART_RESUME_STORAGE_KEY =
+  "asihjaya:pos-workspace-pending-held-cart-resume";
 
 type PosWorkspaceCommand = {
   type: "search" | "scan";
@@ -180,6 +205,180 @@ function normalizePosWorkspaceCommand(
     type: command.type,
     value: normalizedValue,
   };
+}
+
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function isStoredPosAvailableItem(value: unknown): value is PosAvailableItem {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.sku === "string" &&
+    typeof value.barcode === "string" &&
+    typeof value.productId === "string" &&
+    typeof value.productCode === "string" &&
+    typeof value.productName === "string" &&
+    typeof value.categoryId === "string" &&
+    typeof value.categoryName === "string"
+  );
+}
+
+function isStoredCustomer(value: unknown): value is PosCustomerOption {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.fullName === "string"
+  );
+}
+
+function getStoredPosCartState(): StoredPosCartState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(POS_ACTIVE_CART_STORAGE_KEY);
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue) as unknown;
+
+    if (!isRecord(parsedValue) || !Array.isArray(parsedValue.items)) {
+      return null;
+    }
+
+    const items = parsedValue.items.filter(isStoredPosAvailableItem);
+    const customer = isStoredCustomer(parsedValue.customer)
+      ? parsedValue.customer
+      : null;
+
+    if (items.length === 0 && !customer) {
+      return null;
+    }
+
+    return {
+      version: 1,
+      items,
+      customer,
+      updatedAt:
+        typeof parsedValue.updatedAt === "string"
+          ? parsedValue.updatedAt
+          : new Date().toISOString(),
+    };
+  } catch {
+    window.sessionStorage.removeItem(POS_ACTIVE_CART_STORAGE_KEY);
+    return null;
+  }
+}
+
+function saveStoredPosCartState({
+  items,
+  customer,
+}: {
+  items: PosAvailableItem[];
+  customer: PosCustomerOption | null;
+}) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (items.length === 0 && !customer) {
+    window.sessionStorage.removeItem(POS_ACTIVE_CART_STORAGE_KEY);
+    return;
+  }
+
+  const state: StoredPosCartState = {
+    version: 1,
+    items,
+    customer,
+    updatedAt: new Date().toISOString(),
+  };
+
+  window.sessionStorage.setItem(
+    POS_ACTIVE_CART_STORAGE_KEY,
+    JSON.stringify(state),
+  );
+}
+
+function getPendingHeldCartResumeState(): PendingHeldCartResumeState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(
+      POS_PENDING_HELD_CART_RESUME_STORAGE_KEY,
+    );
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue) as unknown;
+
+    if (
+      !isRecord(parsedValue) ||
+      !isRecord(parsedValue.heldCart) ||
+      !Array.isArray(parsedValue.items)
+    ) {
+      return null;
+    }
+
+    const heldCart = parsedValue.heldCart as PosHeldCartSummary;
+    const items = parsedValue.items.filter(isStoredPosAvailableItem) as PosHeldCartItem[];
+
+    if (items.length === 0 || typeof heldCart.holdNumber !== "string") {
+      return null;
+    }
+
+    return {
+      version: 1,
+      heldCart,
+      items,
+      updatedAt:
+        typeof parsedValue.updatedAt === "string"
+          ? parsedValue.updatedAt
+          : new Date().toISOString(),
+    };
+  } catch {
+    window.sessionStorage.removeItem(POS_PENDING_HELD_CART_RESUME_STORAGE_KEY);
+    return null;
+  }
+}
+
+function removeStoredPosCartState() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.removeItem(POS_ACTIVE_CART_STORAGE_KEY);
+}
+
+function removePendingHeldCartResumeState() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.removeItem(POS_PENDING_HELD_CART_RESUME_STORAGE_KEY);
+}
+
+function getHeldCartErrorMessage(
+  result: Extract<PosHeldCartActionResult, { status: "error" }>,
+) {
+  const fieldErrorMessages = Object.values(result.fieldErrors ?? {}).filter(
+    Boolean,
+  );
+
+  if (fieldErrorMessages.length === 0) {
+    return result.message;
+  }
+
+  return `${result.message} ${fieldErrorMessages.join(" ")}`;
 }
 
 const paymentMethodConfigs: PaymentMethodConfig[] = [
@@ -719,6 +918,9 @@ function CartContent({
   onRemoveItem,
   onClearCart,
   onContinueToPayment,
+  canHoldCart,
+  holdCartDisabledReason,
+  onOpenHoldDialog,
 }: CartContentProps) {
   const hasCartItems = cartItems.length > 0;
   const hasCustomers = customers.length > 0;
@@ -962,28 +1164,231 @@ function CartContent({
           </div>
         </div>
 
-        <button
-          type="button"
-          disabled={!canCheckout}
-          onClick={onContinueToPayment}
-          className={cn(
-            "mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 font-semibold transition",
-            canCheckout
-              ? "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90"
-              : "cursor-not-allowed bg-neutral-200 text-neutral-500",
-          )}
-        >
-          Lanjut ke Pembayaran
-          <ChevronRight className="size-4" />
-        </button>
+        <div className="mt-5 grid gap-2">
+          <button
+            type="button"
+            disabled={!canCheckout}
+            onClick={onContinueToPayment}
+            className={cn(
+              "flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 font-semibold transition",
+              canCheckout
+                ? "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90"
+                : "cursor-not-allowed bg-neutral-200 text-neutral-500",
+            )}
+          >
+            Lanjut ke Pembayaran
+            <ChevronRight className="size-4" />
+          </button>
 
-        <p className="mt-3 text-center text-[11px] text-[var(--muted)]">
+          <button
+            type="button"
+            disabled={!canHoldCart}
+            onClick={onOpenHoldDialog}
+            className={cn(
+              "flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition",
+              canHoldCart
+                ? "border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100"
+                : "cursor-not-allowed border-[var(--border)] bg-neutral-100 text-neutral-400",
+            )}
+          >
+            <Pause className="size-4" />
+            Tahan Transaksi
+          </button>
+        </div>
+
+        <p className="mt-3 text-center text-[11px] leading-5 text-[var(--muted)]">
           {canCheckout
             ? selectedCustomer
               ? `Checkout untuk ${selectedCustomer.fullName}.`
               : "Lanjutkan sebagai walk-in customer."
             : checkoutDisabledReason}
+          {hasCartItems ? (
+            <>
+              <br />
+              {canHoldCart
+                ? "Atau tahan transaksi untuk dilanjutkan nanti."
+                : holdCartDisabledReason}
+            </>
+          ) : null}
         </p>
+      </div>
+    </div>
+  );
+}
+
+
+type HoldCartDialogProps = {
+  cartItems: PosAvailableItem[];
+  totalAmount: number;
+  selectedCustomer: PosCustomerOption | null;
+  titleInput: string;
+  noteInput: string;
+  feedback: string | null;
+  isPending: boolean;
+  onTitleInputChange: (value: string) => void;
+  onNoteInputChange: (value: string) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+};
+
+function HoldCartDialog({
+  cartItems,
+  totalAmount,
+  selectedCustomer,
+  titleInput,
+  noteInput,
+  feedback,
+  isPending,
+  onTitleInputChange,
+  onNoteInputChange,
+  onCancel,
+  onSubmit,
+}: HoldCartDialogProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="border-b border-[var(--border)] p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                Hold Cart
+              </p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight text-neutral-950">
+                Tahan transaksi ini?
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                Item akan dikunci sementara dan tidak muncul di katalog POS
+                sampai hold di-resume atau dibatalkan.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Tutup form hold cart"
+              onClick={onCancel}
+              disabled={isPending}
+              className="grid size-9 shrink-0 place-items-center rounded-xl text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-50"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto p-4 sm:p-5">
+          <div className="rounded-2xl border border-[var(--border)] bg-neutral-50 p-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[var(--muted)]">Total sementara</span>
+              <span className="font-semibold text-neutral-950">
+                {formatCurrency(totalAmount)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span className="text-[var(--muted)]">Jumlah item</span>
+              <span className="font-semibold text-neutral-950">
+                {cartItems.length} item
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span className="text-[var(--muted)]">Customer</span>
+              <span className="truncate font-semibold text-neutral-950">
+                {selectedCustomer?.fullName ?? "Walk-in customer"}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            <label className="block text-sm">
+              <span className="mb-2 block font-medium text-neutral-800">
+                Nama hold / catatan singkat
+              </span>
+              <input
+                value={titleInput}
+                onChange={(event) => onTitleInputChange(event.target.value)}
+                maxLength={160}
+                placeholder="Contoh: Bu Sari tunggu suami"
+                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-white px-4 text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-soft)]"
+              />
+              <p className="mt-1.5 text-xs leading-5 text-[var(--muted)]">
+                Opsional, tapi sangat membantu saat mencari transaksi ditahan.
+              </p>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-2 block font-medium text-neutral-800">
+                Catatan internal
+              </span>
+              <textarea
+                value={noteInput}
+                onChange={(event) => onNoteInputChange(event.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder="Contoh: Customer cek saldo, item jangan dijual dulu."
+                className="w-full resize-none rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-neutral-950 outline-none transition placeholder:text-neutral-400 focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-soft)]"
+              />
+            </label>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+              Item yang dikunci
+            </p>
+            <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
+              {cartItems.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="flex items-start justify-between gap-3 rounded-xl bg-neutral-50 px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-neutral-950">
+                      {index + 1}. {item.productName}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-[var(--muted)]">
+                      {item.sku} · {item.barcode}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs font-semibold text-neutral-950">
+                    {formatCurrency(item.sellingAmount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {feedback ? (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
+              {feedback}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-2 border-t border-[var(--border)] p-4 sm:grid-cols-[1fr_1.4fr] sm:p-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isPending}
+            className="flex h-11 items-center justify-center rounded-xl border border-[var(--border)] px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={isPending}
+            className="flex h-11 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-wait disabled:opacity-70"
+          >
+            {isPending ? (
+              <>
+                <LoaderCircle className="size-4 animate-spin" />
+                Menahan transaksi...
+              </>
+            ) : (
+              <>
+                <Pause className="size-4" />
+                Simpan Hold
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1883,6 +2288,11 @@ export function PosWorkspace({
     Extract<PosCheckoutActionResult, { status: "success" }>["sale"] | null
   >(null);
   const [isCheckoutPending, startCheckoutTransition] = useTransition();
+  const [isHoldDialogOpen, setIsHoldDialogOpen] = useState(false);
+  const [holdTitleInput, setHoldTitleInput] = useState("");
+  const [holdNoteInput, setHoldNoteInput] = useState("");
+  const [holdFeedback, setHoldFeedback] = useState<string | null>(null);
+  const [isHoldPending, startHoldTransition] = useTransition();
   const posWorkspaceCommandHandlerRef = useRef<
     (command: PosWorkspaceCommand) => void
   >(() => undefined);
@@ -1898,6 +2308,68 @@ export function PosWorkspace({
 
     return () => window.clearTimeout(timeoutId);
   }, [cartFeedback]);
+
+
+  useEffect(() => {
+    const pendingResumeState = getPendingHeldCartResumeState();
+    const storedCartState = pendingResumeState ? null : getStoredPosCartState();
+
+    if (!pendingResumeState && !storedCartState) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (pendingResumeState) {
+        removePendingHeldCartResumeState();
+        removeStoredPosCartState();
+        setCartItems(pendingResumeState.items);
+        setSelectedCustomer(pendingResumeState.heldCart.customer);
+        setCustomerQuery(pendingResumeState.heldCart.customer?.fullName ?? "");
+        setIsCustomerSelectorOpen(false);
+        setCheckoutResult(null);
+        setPayments([]);
+        setPaymentFeedback(null);
+        setPaymentAmountInput("");
+        setPaymentProviderInput("");
+        setPaymentReferenceInput("");
+        setPaymentNoteInput("");
+        setPanelMode("cart");
+        setIsMobileCartOpen(true);
+        setCartFeedback(
+          `Hold ${pendingResumeState.heldCart.holdNumber} berhasil dimasukkan kembali ke cart.`,
+        );
+        router.refresh();
+        return;
+      }
+
+      if (!storedCartState) {
+        return;
+      }
+
+      setCartItems(storedCartState.items);
+      setSelectedCustomer(storedCartState.customer);
+      setCustomerQuery(storedCartState.customer?.fullName ?? "");
+      setIsCustomerSelectorOpen(false);
+
+      if (storedCartState.items.length > 0) {
+        setCartFeedback("Cart POS terakhir dipulihkan dari sesi browser ini.");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [router]);
+
+  useEffect(() => {
+    if (panelMode === "success") {
+      removeStoredPosCartState();
+      return;
+    }
+
+    saveStoredPosCartState({
+      items: cartItems,
+      customer: selectedCustomer,
+    });
+  }, [cartItems, panelMode, selectedCustomer]);
 
   const filteredItems = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -1978,6 +2450,21 @@ export function PosWorkspace({
         : "Lanjutkan ke pembayaran manual.";
   const canFinalizePayment =
     canCheckout && payments.length > 0 && remainingAmount === 0;
+  const canHoldCart =
+    panelMode === "cart" &&
+    cartItems.length > 0 &&
+    payments.length === 0 &&
+    Boolean(context.register) &&
+    Boolean(context.activeShift);
+  const holdCartDisabledReason = !cartItems.length
+    ? "Tambahkan minimal satu item sebelum transaksi bisa ditahan."
+    : payments.length > 0
+      ? "Transaksi yang sudah memiliki payment tidak bisa ditahan. Reset payment terlebih dahulu."
+      : !context.register
+        ? "Register aktif belum tersedia untuk outlet ini."
+        : !context.activeShift
+          ? "Shift aktif belum dibuka, hold cart belum bisa dibuat."
+          : "Transaksi bisa ditahan.";
 
   function resetPaymentForm(
     nextMethod: PosManualPaymentMethod = selectedMethod,
@@ -2034,6 +2521,74 @@ export function PosWorkspace({
     setCheckoutResult(null);
     resetPaymentFlow();
     setCartFeedback("Keranjang transaksi direset.");
+  }
+
+
+  function openHoldDialog() {
+    if (!canHoldCart) {
+      setCartFeedback(holdCartDisabledReason);
+      return;
+    }
+
+    setHoldTitleInput(selectedCustomer?.fullName ?? "");
+    setHoldNoteInput("");
+    setHoldFeedback(null);
+    setIsHoldDialogOpen(true);
+  }
+
+  function closeHoldDialog() {
+    if (isHoldPending) {
+      return;
+    }
+
+    setIsHoldDialogOpen(false);
+    setHoldFeedback(null);
+  }
+
+  function holdCurrentCart() {
+    if (!canHoldCart) {
+      setHoldFeedback(holdCartDisabledReason);
+      return;
+    }
+
+    if (holdTitleInput.trim().length > 160) {
+      setHoldFeedback("Nama hold maksimal 160 karakter.");
+      return;
+    }
+
+    if (holdNoteInput.trim().length > 500) {
+      setHoldFeedback("Catatan hold maksimal 500 karakter.");
+      return;
+    }
+
+    setHoldFeedback(null);
+
+    startHoldTransition(async () => {
+      const result = await holdPosCartAction({
+        itemIds: cartItems.map((item) => item.id),
+        customerId: selectedCustomer?.id ?? null,
+        title: holdTitleInput,
+        note: holdNoteInput,
+      });
+
+      if (result.status === "error") {
+        setHoldFeedback(getHeldCartErrorMessage(result));
+        return;
+      }
+
+      setCartItems([]);
+      setSelectedCustomer(null);
+      setCustomerQuery("");
+      setIsCustomerSelectorOpen(false);
+      setCheckoutResult(null);
+      resetPaymentFlow();
+      removeStoredPosCartState();
+      setIsHoldDialogOpen(false);
+      setHoldTitleInput("");
+      setHoldNoteInput("");
+      setCartFeedback(result.message);
+      router.refresh();
+    });
   }
 
   function addItemToCart(item: PosAvailableItem) {
@@ -2367,6 +2922,9 @@ export function PosWorkspace({
       onRemoveItem={removeItemFromCart}
       onClearCart={clearCart}
       onContinueToPayment={continueToPayment}
+      canHoldCart={canHoldCart}
+      holdCartDisabledReason={holdCartDisabledReason}
+      onOpenHoldDialog={openHoldDialog}
     />
   );
 
@@ -2423,6 +2981,22 @@ export function PosWorkspace({
 
   return (
     <>
+      {isHoldDialogOpen ? (
+        <HoldCartDialog
+          cartItems={cartItems}
+          totalAmount={totalAmount}
+          selectedCustomer={selectedCustomer}
+          titleInput={holdTitleInput}
+          noteInput={holdNoteInput}
+          feedback={holdFeedback}
+          isPending={isHoldPending}
+          onTitleInputChange={setHoldTitleInput}
+          onNoteInputChange={setHoldNoteInput}
+          onCancel={closeHoldDialog}
+          onSubmit={holdCurrentCart}
+        />
+      ) : null}
+
       <div className="lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[minmax(0,1fr)_380px] lg:overflow-hidden">
         {/* Katalog */}
         <section className="min-w-0 p-4 pb-36 sm:p-5 sm:pb-36 lg:overflow-y-auto lg:border-r lg:border-[var(--border)] lg:p-6">
