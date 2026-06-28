@@ -118,7 +118,7 @@ function SummaryCard({
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm text-[var(--muted)]">{title}</p>
-          <p className="mt-2 truncate text-xl font-semibold tracking-tight text-neutral-950">
+          <p className="mt-2 truncate text-xl font-semibold text-neutral-950">
             {value}
           </p>
           <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{helper}</p>
@@ -142,7 +142,7 @@ function OutletBadge({ data }: { data: PosCustomerListData }) {
         </div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+            <p className="text-xs font-semibold uppercase text-[var(--muted)]">
               Outlet
             </p>
             <span
@@ -255,7 +255,7 @@ function QuickCreateCustomerForm({ returnTo }: { returnTo: string }) {
         <input type="hidden" name="returnTo" value={returnTo} />
         <div className="grid gap-3 lg:grid-cols-3">
           <label className="grid gap-1.5 text-sm lg:col-span-1">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            <span className="text-xs font-semibold uppercase text-[var(--muted)]">
               Nama Customer
             </span>
             <input
@@ -267,7 +267,7 @@ function QuickCreateCustomerForm({ returnTo }: { returnTo: string }) {
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            <span className="text-xs font-semibold uppercase text-[var(--muted)]">
               Nomor HP
             </span>
             <input
@@ -279,7 +279,7 @@ function QuickCreateCustomerForm({ returnTo }: { returnTo: string }) {
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            <span className="text-xs font-semibold uppercase text-[var(--muted)]">
               Email
             </span>
             <input
@@ -294,7 +294,7 @@ function QuickCreateCustomerForm({ returnTo }: { returnTo: string }) {
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <label className="grid gap-1.5 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            <span className="text-xs font-semibold uppercase text-[var(--muted)]">
               Alamat
             </span>
             <textarea
@@ -306,7 +306,7 @@ function QuickCreateCustomerForm({ returnTo }: { returnTo: string }) {
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            <span className="text-xs font-semibold uppercase text-[var(--muted)]">
               Catatan
             </span>
             <textarea
@@ -438,8 +438,8 @@ export default async function PosCustomersPage({ searchParams }: PageProps) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm text-[var(--muted)]">Aplikasi POS</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">
-              Pelanggan POS
+            <h1 className="mt-1 text-2xl font-semibold text-neutral-950">
+              Daftar Customer
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
               Data pelanggan real untuk cek kontak, histori transaksi outlet
@@ -549,18 +549,18 @@ export default async function PosCustomersPage({ searchParams }: PageProps) {
             <section className="mt-5 hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-white sm:block">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-[var(--border)] text-sm">
-                  <thead className="bg-neutral-50 text-left text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                  <thead className="bg-neutral-50 text-left text-xs uppercase text-[var(--muted)]">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">Customer</th>
-                      <th className="px-4 py-3 font-semibold">Kontak</th>
-                      <th className="px-4 py-3 font-semibold">
+                      <th className="px-4 py-3 !font-medium">Customer</th>
+                      <th className="px-4 py-3 !font-medium">Kontak</th>
+                      <th className="px-4 py-3 !font-medium">
                         Transaksi terakhir
                       </th>
-                      <th className="px-4 py-3 text-right font-semibold">
+                      <th className="px-4 py-3 text-right !font-medium">
                         Total
                       </th>
-                      <th className="px-4 py-3 text-right font-semibold">
-                        Aksi
+                      <th className="px-4 py-3 text-right !font-medium">
+                        Action
                       </th>
                     </tr>
                   </thead>

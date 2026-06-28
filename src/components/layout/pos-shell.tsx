@@ -18,6 +18,7 @@ import {
   Wifi,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -81,11 +82,29 @@ const fallbackStatus: PosShellStatus = {
 };
 
 const navigation = [
-  { label: "POS", href: "/pos", icon: ShoppingBag },
+  { label: "Kasir", href: "/pos", icon: ShoppingBag },
+  {
+    label: "Transaksi",
+    href: "/pos/transaksi",
+    icon: ReceiptText,
+    children: [
+      { label: "Daftar Transaksi", href: "/pos/transaksi", icon: ReceiptText },
+      { label: "Transaksi Ditahan", href: "/pos/ditahan", icon: Pause },
+    ],
+  },
+  { label: "Pelanggan", href: "/pos/pelanggan", icon: UsersRound },
+  { label: "Shift Kasir", href: "/pos/shift", icon: Clock3 },
+] as const;
+
+const mobilePrimaryNavigation = [
+  { label: "Kasir", href: "/pos", icon: ShoppingBag },
   { label: "Transaksi", href: "/pos/transaksi", icon: ReceiptText },
   { label: "Pelanggan", href: "/pos/pelanggan", icon: UsersRound },
-  { label: "Ditahan", href: "/pos/ditahan", icon: Pause },
-  { label: "Shift Saat Ini", href: "/pos/shift", icon: Clock3 },
+] as const;
+
+const mobileMoreNavigation = [
+  { label: "Transaksi Tertahan", href: "/pos/ditahan", icon: Pause },
+  { label: "Shift Kasir", href: "/pos/shift", icon: Clock3 },
 ] as const;
 
 type SidebarContentProps = {
@@ -96,6 +115,13 @@ type SidebarContentProps = {
 
 function isNavigationActive(pathname: string, href: string) {
   return href === "/pos" ? pathname === href : pathname.startsWith(href);
+}
+
+function isTransactionNavigationActive(pathname: string) {
+  return (
+    isNavigationActive(pathname, "/pos/transaksi") ||
+    isNavigationActive(pathname, "/pos/ditahan")
+  );
 }
 
 function formatStatusTime(value: string | Date | null) {
@@ -156,6 +182,17 @@ function SidebarContent({
   canAccessAdmin,
   onNavigate,
 }: SidebarContentProps) {
+  const [openNavigationGroups, setOpenNavigationGroups] = useState<
+    Record<string, boolean>
+  >({});
+
+  function toggleNavigationGroup(href: string) {
+    setOpenNavigationGroups((currentGroups) => ({
+      ...currentGroups,
+      [href]: !currentGroups[href],
+    }));
+  }
+
   return (
     <>
       <Link
@@ -163,44 +200,114 @@ function SidebarContent({
         onClick={onNavigate}
         className="mb-8 flex items-center gap-3 px-2"
       >
-        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]">
-          <Store className="size-5" />
-        </div>
-
-        <div className="min-w-0">
-          <p className="font-semibold tracking-wide text-neutral-950">
-            ASIHJAYA
-          </p>
-          <p className="truncate text-xs text-[var(--muted)]">Aplikasi POS</p>
+        <div className="h-12 w-auto shrink-0">
+          <Image
+            src="/logo/logo-brand.png"
+            alt="Logo Asihjaya"
+            width={140}
+            height={40}
+            sizes="512px"
+            className="h-full w-auto object-contain"
+            priority
+          />
         </div>
       </Link>
 
       <nav className="space-y-1">
-        {navigation.map(({ label, href, icon: Icon }) => {
-          const active = isNavigationActive(pathname, href);
+        {navigation.map((item) => {
+          const Icon = item.icon;
+          const hasChildren = "children" in item;
+          const active = hasChildren
+            ? isTransactionNavigationActive(pathname)
+            : isNavigationActive(pathname, item.href);
+          const expanded = hasChildren
+            ? Boolean(openNavigationGroups[item.href])
+            : false;
 
           return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
-                active
-                  ? "bg-[var(--accent-soft)] text-neutral-950"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "size-[18px] shrink-0",
-                  active && "text-[var(--accent)]",
-                )}
-              />
+            <div key={item.href}>
+              {hasChildren ? (
+                <button
+                  type="button"
+                  onClick={() => toggleNavigationGroup(item.href)}
+                  aria-expanded={expanded}
+                  className={cn(
+                    "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left !text-sm !font-medium transition-colors",
+                    active
+                      ? "bg-[var(--accent-soft)] text-neutral-950"
+                      : "text-black hover:bg-neutral-100 hover:text-neutral-950",
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "size-[18px] shrink-0",
+                      active && "text-[var(--accent)]",
+                    )}
+                  />
 
-              <span>{label}</span>
-            </Link>
+                  <span className="min-w-0 flex-1">{item.label}</span>
+
+                  <ChevronRight
+                    className={cn(
+                      "size-4 shrink-0 text-neutral-400 transition-transform",
+                      expanded && "rotate-90",
+                      active && "text-[var(--accent)]",
+                    )}
+                  />
+                </button>
+              ) : (
+                <Link
+                  href={item.href}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-[var(--accent-soft)] text-neutral-950"
+                      : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950",
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "size-[18px] shrink-0",
+                      active && "text-[var(--accent)]",
+                    )}
+                  />
+
+                  <span className="min-w-0 flex-1">{item.label}</span>
+                </Link>
+              )}
+
+              {hasChildren && expanded ? (
+                <div className="ml-[22px] mt-1 space-y-1 border-l border-[var(--border)] pl-3">
+                  {item.children.map((child) => {
+                    const ChildIcon = child.icon;
+                    const childActive = isNavigationActive(
+                      pathname,
+                      child.href,
+                    );
+
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={onNavigate}
+                        aria-current={childActive ? "page" : undefined}
+                        className={cn(
+                          "flex min-h-9 items-center gap-2.5 rounded-lg px-3 text-xs font-semibold transition-colors",
+                          childActive
+                            ? "bg-white text-[var(--accent)] shadow-sm ring-1 ring-[var(--border)]"
+                            : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900",
+                        )}
+                      >
+                        <ChildIcon className="size-4 shrink-0" />
+                        <span>{child.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </nav>
@@ -358,6 +465,27 @@ export function PosShell({
             </div>
 
             <div className="mt-5 grid gap-3">
+              {mobileMoreNavigation.map(({ label, href, icon: Icon }) => {
+                const active = isNavigationActive(pathname, href);
+
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setIsMoreOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-2xl border p-4 transition",
+                      active
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                        : "border-[var(--border)] text-neutral-700 hover:bg-neutral-50",
+                    )}
+                  >
+                    <Icon className="size-5 shrink-0" />
+                    <span className="text-sm font-medium">{label}</span>
+                  </Link>
+                );
+              })}
+
               <button
                 type="button"
                 className="flex items-center gap-3 rounded-2xl border border-[var(--border)] p-4 text-left"
@@ -398,12 +526,14 @@ export function PosShell({
           </button>
 
           <div className="min-w-0 lg:hidden">
-            <p className="truncate text-sm font-semibold text-neutral-950">
-              ASIHJAYA POS
-            </p>
-            <p className="truncate text-xs text-[var(--muted)]">
-              {user.outletName}
-            </p>
+            <Image
+              src="/logo/logo-brand.png"
+              alt="Logo Asihjaya"
+              width={120}
+              height={34}
+              className="h-11 w-auto object-contain"
+              priority
+            />
           </div>
 
           <form
@@ -506,8 +636,11 @@ export function PosShell({
         </div>
 
         <nav className="grid h-[72px] grid-cols-4 pb-[env(safe-area-inset-bottom)]">
-          {navigation.slice(0, 3).map(({ label, href, icon: Icon }) => {
-            const active = isNavigationActive(pathname, href);
+          {mobilePrimaryNavigation.map(({ label, href, icon: Icon }) => {
+            const active =
+              href === "/pos/transaksi"
+                ? isTransactionNavigationActive(pathname)
+                : isNavigationActive(pathname, href);
 
             return (
               <Link

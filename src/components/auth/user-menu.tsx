@@ -40,7 +40,7 @@ export function UserMenu({
         <CircleUserRound className="size-9 shrink-0 text-neutral-500" />
 
         <div className="hidden min-w-0 sm:block">
-          <p className="max-w-36 truncate text-sm font-medium text-neutral-950">
+          <p className="max-w-36 truncate text-xs font-medium text-neutral-950">
             {fullName}
           </p>
 

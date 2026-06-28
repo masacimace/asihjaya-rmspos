@@ -311,7 +311,7 @@ export default async function PosShiftPage() {
           <div>
             <p className="text-sm text-[var(--muted)]">Aplikasi POS</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">
-              Shift POS
+              Ringkasan Shift
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
               Ringkasan shift berjalan untuk kasir: modal awal, expected cash,

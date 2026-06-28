@@ -217,7 +217,7 @@ function SummaryCard({
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm text-[var(--muted)]">{title}</p>
-          <p className="mt-2 truncate text-md font-semibold tracking-tight text-neutral-950 sm:text-sm">
+          <p className="mt-2 truncate text-md font-semibold text-neutral-950 sm:text-sm">
             {value}
           </p>
           <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{helper}</p>
@@ -452,10 +452,10 @@ function TransactionDetailPanel({
     >
       <div className="flex flex-col gap-4 border-b border-[var(--border)] bg-neutral-50 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+          <p className="text-xs font-semibold uppercase text-[var(--muted)]">
             Detail Transaksi
           </p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-neutral-950">
+          <h2 className="mt-2 text-xl font-semibold text-neutral-950">
             {detail.invoiceNumber}
           </h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
@@ -822,11 +822,11 @@ export default async function PosTransactionsPage({ searchParams }: PageProps) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm text-[var(--muted)]">Aplikasi POS</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">
-              Transaksi POS
+            <h1 className="mt-1 text-2xl font-semibold text-neutral-950">
+              Daftar Transaksi
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Riwayat transaksi real dari outlet aktif untuk cek invoice,
+              Daftar transaksi real dari outlet aktif untuk cek invoice,
               customer, item, payment, dan buka ulang dokumen A5.
             </p>
           </div>
@@ -1004,13 +1004,13 @@ export default async function PosTransactionsPage({ searchParams }: PageProps) {
             <section className="mt-5 hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-white sm:block">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-[var(--border)] text-sm">
-                  <thead className="bg-neutral-50 text-left text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                  <thead className="bg-neutral-50 text-left text-xs uppercase text-[var(--muted)]">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">Invoice</th>
-                      <th className="px-4 py-3 font-semibold">Customer</th>
-                      <th className="px-4 py-3 font-semibold">Item</th>
-                      <th className="px-4 py-3 font-semibold">Payment</th>
-                      <th className="px-4 py-3 text-right font-semibold">
+                      <th className="px-4 py-3 !font-medium">Invoice</th>
+                      <th className="px-4 py-3 !font-medium">Customer</th>
+                      <th className="px-4 py-3 !font-medium">Item</th>
+                      <th className="px-4 py-3 !font-medium">Payment</th>
+                      <th className="px-4 py-3 text-right !font-medium">
                         Total
                       </th>
                       <th className="px-4 py-3 text-right font-semibold">

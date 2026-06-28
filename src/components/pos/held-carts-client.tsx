@@ -208,7 +208,13 @@ function OutletBadge({ data }: { data: PosHeldCartListData }) {
   );
 }
 
-function Feedback({ feedback, onClose }: { feedback: FeedbackState; onClose: () => void }) {
+function Feedback({
+  feedback,
+  onClose,
+}: {
+  feedback: FeedbackState;
+  onClose: () => void;
+}) {
   if (!feedback) {
     return null;
   }
@@ -260,7 +266,10 @@ function HeldCartCard({
 }) {
   const isPending = pendingActionId === heldCart.id;
   const firstItems = heldCart.items.slice(0, 4);
-  const remainingItemsCount = Math.max(heldCart.items.length - firstItems.length, 0);
+  const remainingItemsCount = Math.max(
+    heldCart.items.length - firstItems.length,
+    0,
+  );
 
   return (
     <article className="overflow-hidden rounded-3xl border border-[var(--border)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
@@ -299,7 +308,9 @@ function HeldCartCard({
 
         <div className="mt-4 grid gap-2 text-xs leading-5 text-[var(--muted)] sm:grid-cols-3">
           <div className="rounded-2xl bg-neutral-50 px-3 py-2">
-            <span className="block font-semibold text-neutral-800">Ditahan</span>
+            <span className="block font-semibold text-neutral-800">
+              Ditahan
+            </span>
             {formatDateTime(heldCart.createdAt)}
           </div>
           <div className="rounded-2xl bg-neutral-50 px-3 py-2">
@@ -349,7 +360,8 @@ function HeldCartCard({
 
         <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
           <p className="text-xs leading-5 text-[var(--muted)]">
-            Resume akan mengembalikan item ke cart POS dan melepas lock hold ini.
+            Resume akan mengembalikan item ke cart POS dan melepas lock hold
+            ini.
           </p>
           <button
             type="button"
@@ -459,11 +471,8 @@ export function HeldCartsClient({ data }: HeldCartsClientProps) {
       <div className="mx-auto max-w-6xl">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="flex items-center gap-2 text-sm font-medium text-[var(--accent)]">
-              <Pause className="size-4" />
-              POS Hold Cart
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
+            <p className="text-sm text-[var(--muted)]">Aplikasi POS</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">
               Transaksi Ditahan
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
@@ -483,7 +492,6 @@ export function HeldCartsClient({ data }: HeldCartsClientProps) {
         </div>
 
         <Feedback feedback={feedback} onClose={() => setFeedback(null)} />
-
 
         <div className="grid gap-3 sm:grid-cols-3">
           <SummaryCard

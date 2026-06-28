@@ -207,7 +207,6 @@ function normalizePosWorkspaceCommand(
   };
 }
 
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
 }
@@ -330,7 +329,9 @@ function getPendingHeldCartResumeState(): PendingHeldCartResumeState | null {
     }
 
     const heldCart = parsedValue.heldCart as PosHeldCartSummary;
-    const items = parsedValue.items.filter(isStoredPosAvailableItem) as PosHeldCartItem[];
+    const items = parsedValue.items.filter(
+      isStoredPosAvailableItem,
+    ) as PosHeldCartItem[];
 
     if (items.length === 0 || typeof heldCart.holdNumber !== "string") {
       return null;
@@ -1216,7 +1217,6 @@ function CartContent({
   );
 }
 
-
 type HoldCartDialogProps = {
   cartItems: PosAvailableItem[];
   totalAmount: number;
@@ -1718,7 +1718,8 @@ function PaymentContent({
 
               {nonCashAmountIsTooHigh ? (
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
-                  {selectedConfig.label} tidak boleh lebih besar dari sisa bayar.
+                  {selectedConfig.label} tidak boleh lebih besar dari sisa
+                  bayar.
                 </div>
               ) : null}
 
@@ -2202,30 +2203,30 @@ function CloseShiftCard({
           )}
         >
           <div>
-            <p className="text-[10px] font-semibold uppercase text-current/60">
-              Nominal Seharusnya:
+            <p className="text-[10px] !font-medium uppercase text-current/60">
+              Nominal Seharusnya
             </p>
-            <p className="mt-1 font-semibold text-neutral-950">
+            <p className="mt-1 !font-medium text-neutral-950">
               {formatCurrency(expectedCashAmount)}
             </p>
           </div>
 
           <div>
             <p className="text-[10px] font-semibold uppercase text-current/60">
-              Total Uang (Closing):
+              Total Uang (Closing)
             </p>
-            <p className="mt-1 font-semibold text-neutral-950">
+            <p className="mt-1 !font-medium text-neutral-950">
               {actualCashAmount === null
-                ? "Belum diisi"
+                ? "-----"
                 : formatCurrency(actualCashAmount)}
             </p>
           </div>
 
           <div>
-            <p className="text-[10px] font-semibold uppercase text-current/60">
-              Selisih Uang:
+            <p className="text-[10px] !font-medium uppercase text-current/60">
+              Selisih Uang
             </p>
-            <p className="mt-1 font-semibold text-neutral-950">
+            <p className="mt-1 !font-medium text-neutral-950">
               {cashVarianceLabel}
             </p>
           </div>
@@ -2308,7 +2309,6 @@ export function PosWorkspace({
 
     return () => window.clearTimeout(timeoutId);
   }, [cartFeedback]);
-
 
   useEffect(() => {
     const pendingResumeState = getPendingHeldCartResumeState();
@@ -2522,7 +2522,6 @@ export function PosWorkspace({
     resetPaymentFlow();
     setCartFeedback("Keranjang transaksi direset.");
   }
-
 
   function openHoldDialog() {
     if (!canHoldCart) {
