@@ -224,7 +224,7 @@ function SidebarContent({
 }: SidebarContentProps) {
   const [openNavigationGroups, setOpenNavigationGroups] = useState<
     Record<string, boolean>
-  >({});
+  >({ "/pos/transaksi": true });
 
   function toggleNavigationGroup(href: string) {
     setOpenNavigationGroups((currentGroups) => ({
@@ -581,7 +581,7 @@ export function PosShell({
                 alt="Asihjaya"
                 width={64}
                 height={64}
-                className="h-12 w-auto object-contain"
+                className="h-11 w-auto object-contain"
                 priority
               />
             </span>
@@ -592,7 +592,7 @@ export function PosShell({
                 alt="Asihjaya"
                 width={112}
                 height={24}
-                className="h-7 w-auto object-contain"
+                className="h-6 w-auto object-contain"
                 priority
               />
               <span className="block truncate text-[12px] font-medium text-[var(--muted)]">
