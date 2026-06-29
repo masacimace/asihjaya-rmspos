@@ -240,11 +240,11 @@ function SidebarContent({
         onClick={onNavigate}
         className="mb-8 flex items-center gap-3 px-2"
       >
-        <div className="h-12 w-auto shrink-0">
+        <div className="h-[52px] w-auto shrink-0">
           <Image
             src="/logo/logo-brand.png"
             alt="Logo Asihjaya"
-            width={140}
+            width={256}
             height={40}
             sizes="512px"
             className="h-full w-auto object-contain"
@@ -565,7 +565,7 @@ export function PosShell({
               alt="Logo Asihjaya"
               width={120}
               height={34}
-              className="h-10 w-auto object-contain"
+              className="h-13 w-auto object-contain"
               priority
             />
           </div>
