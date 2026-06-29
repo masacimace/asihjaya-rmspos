@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
+import { createReceiptVerificationUrl } from "@/features/sales/verification/receipt-token";
 import {
   customers,
   organizations,
@@ -99,6 +100,10 @@ export type ReceiptCertificateData = {
     paidAt: Date | null;
     metadata: Record<string, unknown> | null;
   }>;
+  verification: {
+    token: string;
+    url: string;
+  };
 };
 
 function toSafeSnapshot(value: Record<string, unknown>): SaleItemSnapshot {
@@ -284,6 +289,7 @@ export async function getReceiptCertificateData({
       paidAt: payment.paidAt,
       metadata: payment.metadata ?? null,
     })),
+    verification: createReceiptVerificationUrl(sale.saleId),
   };
 }
 

@@ -1,3 +1,5 @@
+import { createQrSvgDataUri } from "@/lib/qr-code/svg";
+
 import type { ReceiptCertificateData } from "./receipt-certificate";
 
 const receiptTerms = [
@@ -18,7 +20,7 @@ const styles = String.raw`
     width: 100%;
     overflow: auto;
     padding: 24px;
-    background: #f4efe5;
+    background: #fbfbfb;
   }
 
   .aj-receipt-page,
@@ -45,9 +47,7 @@ const styles = String.raw`
     margin: 0 auto;
     padding: 6mm 7mm;
     color: var(--ink);
-    background:
-      radial-gradient(circle at 50% 54%, rgba(179, 122, 31, 0.055), transparent 33%),
-      linear-gradient(135deg, #fffefa 0%, #fff9ee 100%);
+    background:#fafaf6;
     border: 0.45mm solid var(--gold);
     border-radius: 2.2mm;
     font-family: Arial, Helvetica, sans-serif;
@@ -105,7 +105,6 @@ const styles = String.raw`
     align-content: center;
     gap: 1.4mm;
     padding: 2mm 0;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 248, 236, 0.68));
   }
 
   .aj-logo {
@@ -179,19 +178,6 @@ const styles = String.raw`
     display: grid;
     align-content: center;
     padding: 3mm 3.5mm;
-    border: 0.25mm solid rgba(179, 122, 31, 0.52);
-    border-radius: 2.5mm;
-    background: rgba(255, 255, 255, 0.7);
-  }
-
-  .aj-certificate-title {
-    display: flex;
-    align-items: center;
-    gap: 1.6mm;
-    color: var(--gold);
-    font-size: 10pt;
-    font-weight: 900;
-    text-transform: uppercase;
   }
 
   .aj-divider {
@@ -319,8 +305,6 @@ const styles = String.raw`
     overflow: hidden;
     place-items: center;
     justify-self: center;
-    border: 0.18mm solid rgba(179, 122, 31, 0.26);
-    border-radius: 1.8mm;
     color: var(--gold);
     background: linear-gradient(135deg, #fffefa, #fbf0d8);
     font-size: 4.8pt;
@@ -496,14 +480,19 @@ const styles = String.raw`
 
   .aj-qr-box {
     display: grid;
-    width: 14mm;
-    height: 14mm;
+    width: 16mm;
+    height: 16mm;
     place-items: center;
+    overflow: hidden;
     border: 0.24mm solid #3c2b18;
     border-radius: 1.8mm;
-    background:
-      conic-gradient(#111 0 25%, transparent 0 50%, #111 0 75%, transparent 0) 0 0 / 3.5mm 3.5mm,
-      #fff;
+    background: #fff;
+  }
+
+  .aj-qr-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
   .aj-qr-label {
@@ -513,7 +502,6 @@ const styles = String.raw`
     background: var(--maroon);
     font-size: 4.5pt;
     font-weight: 900;
-    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
@@ -536,7 +524,7 @@ const styles = String.raw`
       height: 148mm;
       margin: 0;
       padding: 0;
-      background: #fffaf0;
+      background: #f9f9f9;
     }
 
     .aj-preview-shell {
@@ -544,7 +532,7 @@ const styles = String.raw`
       height: 148mm;
       overflow: hidden;
       padding: 0;
-      background: #fffaf0;
+      background: #f9f9f9;
     }
 
     .aj-receipt-page {
@@ -717,7 +705,11 @@ function ProductThumbnail({
   const imageKey = getProductImageKey(item);
 
   if (!imageKey) {
-    return <div className="aj-thumb aj-thumb-fallback">{getThumbnailLabel(item)}</div>;
+    return (
+      <div className="aj-thumb aj-thumb-fallback">
+        {getThumbnailLabel(item)}
+      </div>
+    );
   }
 
   return (
@@ -727,7 +719,6 @@ function ProductThumbnail({
     </div>
   );
 }
-
 
 function getPaymentSummary(data: ReceiptCertificateData) {
   if (data.payments.length === 0) {
@@ -769,6 +760,7 @@ export function ReceiptCertificateHtmlDocument({
   const depositAmount = toNumber(data.sale.additionalFeeAmount);
   const totalPaidAmount = getTotalPaidAmount(data);
   const changeAmount = getTotalChangeAmount(data);
+  const verificationQrImage = createQrSvgDataUri(data.verification.url);
 
   return (
     <div className="aj-preview-shell">
@@ -812,8 +804,6 @@ export function ReceiptCertificateHtmlDocument({
             </div>
 
             <aside className="aj-certificate-card">
-              <div className="aj-certificate-title">Surat Jaminan</div>
-              <div className="aj-divider" />
               <div className="aj-summary-lines">
                 <div className="aj-summary-row">
                   <span>No. Order</span>
@@ -855,7 +845,7 @@ export function ReceiptCertificateHtmlDocument({
             <div className="aj-products-grid">
               <div className="aj-product-row aj-product-head">
                 <div>Kode</div>
-                <div>Foto</div>
+                <div>Product</div>
                 <div>Nama Perhiasan</div>
                 <div>Kadar</div>
                 <div>Gram</div>
@@ -936,7 +926,10 @@ export function ReceiptCertificateHtmlDocument({
             </section>
 
             <section className="aj-qr-card">
-              <div className="aj-qr-box"></div>
+              <div className="aj-qr-box">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={verificationQrImage} alt="QR verifikasi nota" />
+              </div>
               <div className="aj-qr-label">Scan Keaslian</div>
               <div className="aj-qr-note">Pindai QR untuk verifikasi nota</div>
             </section>

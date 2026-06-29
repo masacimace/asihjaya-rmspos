@@ -103,6 +103,10 @@ export const receiptCertificateSampleData: ReceiptCertificateData = {
       },
     },
   ],
+  verification: {
+    token: "preview-token",
+    url: "http://localhost:3000/v/preview-token",
+  },
   payments: [
     {
       method: "cash",
