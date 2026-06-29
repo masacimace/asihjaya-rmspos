@@ -259,7 +259,7 @@ const styles = String.raw`
     overflow: hidden;
     border: 0.22mm solid rgba(179, 122, 31, 0.25);
     border-radius: 2.5mm;
-    background: rgba(255, 255, 255, 0.74);
+    background: rgba(255, 255, 255, 1.0);
     min-height: 0;
   }
 
@@ -335,8 +335,8 @@ const styles = String.raw`
   .aj-product-meta {
     margin-top: 0.6mm;
     color: var(--muted);
-    font-size: 6.8pt;
-    font-weight: 700;
+    font-size: 6.5pt;
+    font-weight: 600;
     line-height: 1.15;
   }
 
@@ -480,12 +480,10 @@ const styles = String.raw`
 
   .aj-qr-box {
     display: grid;
-    width: 16mm;
-    height: 16mm;
+    width: 18mm;
+    height: 18mm;
     place-items: center;
     overflow: hidden;
-    border: 0.24mm solid #3c2b18;
-    border-radius: 1.8mm;
     background: #fff;
   }
 
@@ -652,15 +650,16 @@ function formatPercent(value: string | null | undefined) {
 }
 
 function buildProductMeta(item: ReceiptCertificateData["items"][number]) {
-  const purity = formatPercent(item.snapshot.purityPercent);
-  const exchangePurity = formatPercent(item.snapshot.exchangePurityPercent);
-  const productCode = item.snapshot.productCode ?? item.snapshot.sku ?? "-";
+  const itemName = getItemName(item);
+  const masterProductName =
+    item.snapshot.masterProductName ??
+    (item.snapshot.itemDisplayName ? item.snapshot.productName : null);
 
-  if (purity === "-" && exchangePurity === "-") {
-    return productCode;
+  if (!masterProductName || masterProductName === itemName) {
+    return null;
   }
 
-  return `${productCode} · Kadar ${purity} · Tukar ${exchangePurity}`;
+  return masterProductName;
 }
 
 function getProductCode(item: ReceiptCertificateData["items"][number]) {
@@ -675,7 +674,11 @@ function getProductCode(item: ReceiptCertificateData["items"][number]) {
 
 function getItemName(item: ReceiptCertificateData["items"][number]) {
   return (
-    item.snapshot.productName ?? item.snapshot.productCode ?? "Item Perhiasan"
+    item.snapshot.itemDisplayName ??
+    item.snapshot.productName ??
+    item.snapshot.masterProductName ??
+    item.snapshot.productCode ??
+    "Item Perhiasan"
   );
 }
 
@@ -844,12 +847,12 @@ export function ReceiptCertificateHtmlDocument({
           <section className="aj-products-card">
             <div className="aj-products-grid">
               <div className="aj-product-row aj-product-head">
-                <div>Kode</div>
-                <div>Product</div>
-                <div>Nama Perhiasan</div>
-                <div>Kadar</div>
-                <div>Gram</div>
-                <div>Harga</div>
+                <div>KODE</div>
+                <div>FOTO</div>
+                <div>PRODUCT</div>
+                <div>KADAR ±%</div>
+                <div>GRAM</div>
+                <div>HARGA</div>
               </div>
               {visibleItems.map((item) => (
                 <div className="aj-product-row" key={item.lineNumber}>

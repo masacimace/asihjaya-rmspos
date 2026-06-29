@@ -38,6 +38,8 @@ type SaleItemSnapshot = {
   serialNumber?: string | null;
   productCode?: string | null;
   productName?: string | null;
+  itemDisplayName?: string | null;
+  masterProductName?: string | null;
   categoryName?: string | null;
   weightGram?: string | null;
   purityPercent?: string | null;
@@ -124,6 +126,8 @@ function toSafeSnapshot(value: Record<string, unknown>): SaleItemSnapshot {
     serialNumber: readString("serialNumber"),
     productCode: readString("productCode"),
     productName: readString("productName"),
+    itemDisplayName: readString("itemDisplayName"),
+    masterProductName: readString("masterProductName"),
     categoryName: readString("categoryName"),
     weightGram: readString("weightGram"),
     purityPercent: readString("purityPercent"),
@@ -207,6 +211,8 @@ export async function getReceiptCertificateData({
       discountAmount: saleItems.discountAmount,
       finalPriceAmount: saleItems.finalPriceAmount,
       snapshot: saleItems.snapshot,
+      itemDisplayName: productItems.displayName,
+      masterProductName: productMasters.name,
       itemImageKey: productItems.imageKey,
       productImageKey: productMasters.imageKey,
     })
@@ -276,6 +282,8 @@ export async function getReceiptCertificateData({
         finalPriceAmount: item.finalPriceAmount,
         snapshot: {
           ...snapshot,
+          itemDisplayName: snapshot.itemDisplayName ?? item.itemDisplayName,
+          masterProductName: snapshot.masterProductName ?? item.masterProductName,
           imageKey: snapshot.imageKey ?? item.itemImageKey,
           productImageKey: snapshot.productImageKey ?? item.productImageKey,
         },
