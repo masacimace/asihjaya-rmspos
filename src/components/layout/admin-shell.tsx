@@ -280,9 +280,9 @@ export function AdminShell({
   const [isApprovalOpen, setIsApprovalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[var(--background)] lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="grid h-dvh w-full max-w-[100vw] overflow-hidden bg-[var(--background)] lg:grid-cols-[260px_minmax(0,1fr)]">
       {/* Sidebar desktop */}
-      <aside className="sticky top-0 hidden h-screen flex-col border-r border-[var(--border)] bg-white p-5 lg:flex">
+      <aside className="hidden h-dvh min-h-0 flex-col overflow-y-auto border-r border-[var(--border)] bg-white p-5 lg:flex">
         <SidebarContent
           pathname={pathname}
           canAccessPos={user.canAccessPos}
@@ -294,7 +294,7 @@ export function AdminShell({
 
       {/* Sidebar mobile */}
       {isMobileMenuOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 max-w-[100vw] overflow-hidden lg:hidden">
           <button
             type="button"
             aria-label="Tutup navigasi"
@@ -302,7 +302,7 @@ export function AdminShell({
             onClick={() => setIsMobileMenuOpen(false)}
           />
 
-          <aside className="relative z-10 flex h-full w-[min(86vw,300px)] flex-col border-r border-[var(--border)] bg-white p-5 shadow-2xl">
+          <aside className="relative z-10 flex h-full w-[min(86vw,300px)] max-w-full flex-col overflow-y-auto border-r border-[var(--border)] bg-white p-5 shadow-2xl">
             <div className="mb-4 flex justify-end">
               <button
                 type="button"
@@ -326,9 +326,9 @@ export function AdminShell({
         </div>
       ) : null}
 
-      <div className="min-w-0 max-w-full overflow-x-hidden">
+      <div className="flex h-dvh min-h-0 min-w-0 max-w-full flex-col overflow-hidden">
         {/* Topbar */}
-        <header className="sticky top-0 z-40 flex h-20 w-full max-w-full min-w-0 items-center gap-3 overflow-x-hidden border-b border-[var(--border)] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-40 flex h-20 w-full max-w-full min-w-0 shrink-0 items-center gap-3 overflow-x-hidden border-b border-[var(--border)] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
           <button
             type="button"
             aria-label="Buka navigasi"
@@ -365,7 +365,7 @@ export function AdminShell({
             </p>
           </div>
 
-          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
             <button
               type="button"
               aria-label="Persetujuan"
@@ -398,7 +398,7 @@ export function AdminShell({
           </div>
         </header>
 
-        <main className="min-w-0 max-w-full overflow-x-hidden p-4 sm:p-6 lg:p-8">
+        <main className="min-h-0 min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>
