@@ -574,7 +574,7 @@ export default async function AdminDashboardPage() {
               </div>
 
               {dashboard.topProducts.length > 0 ? (
-                <div className="mt-5 max-h-[560px] space-y-3 overflow-y-auto overscroll-contain pr-1">
+                <div className="scrollbar-clean mt-5 max-h-[560px] space-y-3 overflow-y-auto overscroll-contain pr-1">
                   {dashboard.topProducts.map((product) => (
                     <details
                       key={product.productId}
@@ -624,7 +624,7 @@ export default async function AdminDashboardPage() {
                         </div>
 
                         {product.items.length > 0 ? (
-                          <div className="max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">
+                          <div className="scrollbar-clean max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">
                             {product.items.map((item) => (
                               <div
                                 key={item.itemId}
