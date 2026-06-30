@@ -23,6 +23,7 @@ import Link from "next/link";
 import type {
   AdminDashboardActivityKind,
   AdminDashboardAlertTone,
+  AdminDashboardPeriod,
   AdminDashboardRecentTransaction,
   AdminDashboardTrendPoint,
   DashboardComparisonMetric,
@@ -199,14 +200,89 @@ function getRoundedChartMax(value: number) {
   return Math.ceil(value / step) * step;
 }
 
-function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
+type SalesChartInsight = {
+  label: string;
+  value: string;
+  description: string;
+};
+
+function getSalesChartInsights({
+  points,
+  period,
+}: {
+  points: AdminDashboardTrendPoint[];
+  period: AdminDashboardPeriod;
+}) {
+  const totalRevenue = points.reduce((total, point) => total + point.revenue, 0);
+  const averageRevenue = points.length > 0 ? Math.round(totalRevenue / points.length) : 0;
+  const emptyBuckets = points.filter((point) => point.revenue <= 0).length;
+  const bucketLabel = period.chartGranularity === "hour" ? "jam" : "hari";
+  const bestPoint = points.reduce(
+    (selected, point) => (point.revenue > selected.revenue ? point : selected),
+    points[0] ?? {
+      dateKey: "",
+      label: "-",
+      revenue: 0,
+      transactionCount: 0,
+      itemSold: 0,
+    },
+  );
+
+  const insights: SalesChartInsight[] = [
+    {
+      label: "Total periode",
+      value: formatMoney(totalRevenue),
+      description: period.label,
+    },
+    {
+      label: period.chartGranularity === "hour" ? "Jam terbaik" : "Hari terbaik",
+      value: bestPoint.revenue > 0 ? formatMoney(bestPoint.revenue) : "Belum ada",
+      description: bestPoint.revenue > 0 ? bestPoint.label : "Belum ada transaksi",
+    },
+    {
+      label: `Rata-rata per ${bucketLabel}`,
+      value: formatMoney(averageRevenue),
+      description: period.chartBucketLabel,
+    },
+    {
+      label: `${bucketLabel[0]?.toUpperCase() ?? ""}${bucketLabel.slice(1)} tanpa transaksi`,
+      value: formatInteger(emptyBuckets),
+      description: `${points.length} ${bucketLabel} dipantau`,
+    },
+  ];
+
+  return {
+    totalRevenue,
+    averageRevenue,
+    hasRevenue: totalRevenue > 0,
+    bestPoint,
+    bestLabel: period.chartGranularity === "hour" ? "Jam terbaik" : "Hari terbaik",
+    insights,
+  };
+}
+
+function SalesChart({
+  points,
+  averageRevenue,
+  hasRevenue,
+  bestLabel,
+}: {
+  points: AdminDashboardTrendPoint[];
+  averageRevenue: number;
+  hasRevenue: boolean;
+  bestLabel: string;
+}) {
   const width = 760;
   const left = 50;
   const right = 750;
   const top = 35;
   const bottom = 235;
   const chartWidth = right - left;
-  const maxRevenue = Math.max(...points.map((point) => point.revenue), 0);
+  const maxRevenue = Math.max(
+    ...points.map((point) => point.revenue),
+    averageRevenue,
+    0,
+  );
   const maxAxisValue = getRoundedChartMax(maxRevenue);
   const chartPoints = points.map((point, index) => {
     const x =
@@ -235,6 +311,7 @@ function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
       y: bottom,
     },
   );
+  const averageY = bottom - (averageRevenue / maxAxisValue) * (bottom - top);
   const gridValues = [
     maxAxisValue,
     maxAxisValue * 0.75,
@@ -244,19 +321,42 @@ function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
   ];
 
   return (
-    <div className="mt-6 min-w-0 overflow-hidden">
+    <div className="mt-5 min-w-0 overflow-hidden">
       <div className="relative h-[250px] w-full sm:h-[280px]">
-        {highlightedPoint.revenue > 0 ? (
+        {hasRevenue ? (
           <div
             className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-xs shadow-lg"
             style={{
               left: `${(highlightedPoint.x / width) * 100}%`,
-              top: `${Math.max(highlightedPoint.y - 48, 0)}px`,
+              top: `${Math.max(highlightedPoint.y - 58, 0)}px`,
             }}
           >
-            <p className="text-[var(--muted)]">{highlightedPoint.label}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--accent)]">
+              {bestLabel}
+            </p>
+            <p className="mt-1 text-[var(--muted)]">{highlightedPoint.label}</p>
             <p className="mt-0.5 font-semibold text-neutral-950">
               {formatMoney(highlightedPoint.revenue)}
+            </p>
+          </div>
+        ) : null}
+
+        {averageRevenue > 0 ? (
+          <div
+            className="pointer-events-none absolute right-0 z-10 -translate-y-1/2 rounded-full border border-[var(--border)] bg-white/90 px-2.5 py-1 text-[10px] font-medium text-[var(--muted)] shadow-sm"
+            style={{ top: `${(averageY / 260) * 100}%` }}
+          >
+            Rata-rata {formatCompactMoney(averageRevenue)}
+          </div>
+        ) : null}
+
+        {!hasRevenue ? (
+          <div className="pointer-events-none absolute inset-x-10 top-1/2 z-10 -translate-y-1/2 rounded-2xl border border-dashed border-[var(--border)] bg-white/85 px-4 py-5 text-center shadow-sm">
+            <p className="text-sm font-medium text-neutral-900">
+              Belum ada penjualan pada periode ini.
+            </p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Transaksi completed akan otomatis muncul di grafik.
             </p>
           </div>
         ) : null}
@@ -266,7 +366,7 @@ function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
           preserveAspectRatio="none"
           className="h-full w-full overflow-visible"
           role="img"
-          aria-label="Grafik ringkasan penjualan tujuh hari terakhir"
+          aria-label="Grafik ringkasan penjualan"
         >
           <defs>
             <linearGradient id="salesAreaGradient" x1="0" x2="0" y1="0" y2="1">
@@ -292,6 +392,20 @@ function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
             />
           ))}
 
+          {averageRevenue > 0 ? (
+            <line
+              x1={left}
+              x2={right}
+              y1={averageY}
+              y2={averageY}
+              stroke="var(--accent)"
+              strokeDasharray="5 6"
+              strokeOpacity="0.45"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+
           {areaPath ? <path d={areaPath} fill="url(#salesAreaGradient)" /> : null}
 
           {linePath ? (
@@ -306,18 +420,23 @@ function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
             />
           ) : null}
 
-          {chartPoints.map((point) => (
-            <circle
-              key={point.dateKey}
-              cx={point.x}
-              cy={point.y}
-              r="4"
-              fill="white"
-              stroke="var(--accent)"
-              strokeWidth="2"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
+          {chartPoints.map((point) => {
+            const isHighlighted =
+              hasRevenue && point.dateKey === highlightedPoint.dateKey;
+
+            return (
+              <circle
+                key={point.dateKey}
+                cx={point.x}
+                cy={point.y}
+                r={isHighlighted ? "5.5" : "4"}
+                fill={isHighlighted ? "var(--accent)" : "white"}
+                stroke="var(--accent)"
+                strokeWidth={isHighlighted ? "2.5" : "2"}
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          })}
         </svg>
 
         <div className="pointer-events-none absolute inset-y-0 left-0 flex w-10 flex-col justify-between pb-5 pt-7 text-[10px] text-[var(--muted)] sm:text-xs">
@@ -454,6 +573,26 @@ export default async function AdminDashboardPage({
           : "bg-emerald-50 text-emerald-700",
     },
   ];
+  const salesChartInsights = getSalesChartInsights({
+    points: dashboard.trend,
+    period: dashboard.period,
+  });
+  const revenueComparison = getComparison(
+    dashboard.summary.revenue,
+    dashboard.period.comparisonLabel,
+  );
+  const RevenueComparisonIcon =
+    revenueComparison.tone === "down"
+      ? TrendingDown
+      : revenueComparison.tone === "neutral"
+        ? CheckCircle2
+        : TrendingUp;
+  const revenueComparisonClassName =
+    revenueComparison.tone === "down"
+      ? "bg-red-50 text-red-600"
+      : revenueComparison.tone === "neutral"
+        ? "bg-neutral-100 text-neutral-600"
+        : "bg-emerald-50 text-emerald-700";
 
   return (
     <div className="min-w-0 max-w-full overflow-x-hidden space-y-5 lg:space-y-6">
@@ -584,8 +723,8 @@ export default async function AdminDashboardPage({
           </section>
 
           <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
                 <h2 className="font-semibold text-neutral-950">
                   Ringkasan Penjualan
                 </h2>
@@ -594,12 +733,45 @@ export default async function AdminDashboardPage({
                 </p>
               </div>
 
-              <span className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-neutral-600">
-                Per hari
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium ${revenueComparisonClassName}`}
+                >
+                  <RevenueComparisonIcon className="size-3.5" />
+                  {revenueComparison.value} {revenueComparison.label}
+                </span>
+
+                <span className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-neutral-600">
+                  {dashboard.period.chartBucketLabel}
+                </span>
+              </div>
             </div>
 
-            <SalesChart points={dashboard.trend} />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {salesChartInsights.insights.map((insight) => (
+                <div
+                  key={insight.label}
+                  className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]/70 p-3"
+                >
+                  <p className="text-[11px] text-[var(--muted)]">
+                    {insight.label}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-neutral-950">
+                    {insight.value}
+                  </p>
+                  <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">
+                    {insight.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <SalesChart
+              points={dashboard.trend}
+              averageRevenue={salesChartInsights.averageRevenue}
+              hasRevenue={salesChartInsights.hasRevenue}
+              bestLabel={salesChartInsights.bestLabel}
+            />
           </section>
 
           <section className="grid min-w-0 gap-5 2xl:grid-cols-[0.9fr_1.25fr]">

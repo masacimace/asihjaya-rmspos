@@ -35,6 +35,7 @@ import type {
   AdminDashboardData,
   AdminDashboardPeriod,
   AdminDashboardPeriodRange,
+  AdminDashboardTrendGranularity,
   AdminDashboardOperationalAlert,
   AdminDashboardRecentActivity,
   AdminDashboardTopProductItem,
@@ -66,11 +67,28 @@ function addUtcDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
+function addUtcHours(date: Date, hours: number) {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
 function getJakartaMonthStartUtc(date: Date, monthOffset = 0) {
   const parts = getJakartaDateParts(date);
 
   return new Date(
     Date.UTC(parts.year, parts.month + monthOffset, 1) - JAKARTA_OFFSET_MS,
+  );
+}
+
+function getJakartaHourStartUtc(date: Date) {
+  const shiftedDate = new Date(date.getTime() + JAKARTA_OFFSET_MS);
+
+  return new Date(
+    Date.UTC(
+      shiftedDate.getUTCFullYear(),
+      shiftedDate.getUTCMonth(),
+      shiftedDate.getUTCDate(),
+      shiftedDate.getUTCHours(),
+    ) - JAKARTA_OFFSET_MS,
   );
 }
 
@@ -126,7 +144,9 @@ function createPeriodMetadata({
       label: "Kemarin",
       description: "Ringkasan operasional toko untuk hari kemarin.",
       comparisonLabel: "dari hari sebelumnya",
-      chartDescription: "Penjualan bersih selama tujuh hari sampai kemarin.",
+      chartDescription: "Penjualan bersih per hari selama tujuh hari sampai kemarin.",
+      chartGranularity: "day",
+      chartBucketLabel: "Per hari",
       topProductsDescription: "Berdasarkan penjualan kemarin.",
       currentStart,
       currentEnd,
@@ -146,7 +166,9 @@ function createPeriodMetadata({
       label: "7 hari terakhir",
       description: "Ringkasan operasional toko untuk tujuh hari terakhir.",
       comparisonLabel: "dari 7 hari sebelumnya",
-      chartDescription: "Penjualan bersih selama tujuh hari terakhir.",
+      chartDescription: "Penjualan bersih per hari selama tujuh hari terakhir.",
+      chartGranularity: "day",
+      chartBucketLabel: "Per hari",
       topProductsDescription: "Berdasarkan 7 hari terakhir.",
       currentStart,
       currentEnd,
@@ -166,7 +188,9 @@ function createPeriodMetadata({
       label: "30 hari terakhir",
       description: "Ringkasan operasional toko untuk tiga puluh hari terakhir.",
       comparisonLabel: "dari 30 hari sebelumnya",
-      chartDescription: "Penjualan bersih selama tiga puluh hari terakhir.",
+      chartDescription: "Penjualan bersih per hari selama tiga puluh hari terakhir.",
+      chartGranularity: "day",
+      chartBucketLabel: "Per hari",
       topProductsDescription: "Berdasarkan 30 hari terakhir.",
       currentStart,
       currentEnd,
@@ -187,7 +211,9 @@ function createPeriodMetadata({
       label: "Bulan ini",
       description: "Ringkasan operasional toko untuk bulan berjalan.",
       comparisonLabel: "dari periode sebelumnya",
-      chartDescription: "Penjualan bersih selama bulan berjalan.",
+      chartDescription: "Penjualan bersih per hari selama bulan berjalan.",
+      chartGranularity: "day",
+      chartBucketLabel: "Per hari",
       topProductsDescription: "Berdasarkan bulan ini.",
       currentStart,
       currentEnd,
@@ -200,20 +226,23 @@ function createPeriodMetadata({
 
   const currentStart = todayStart;
   const currentEnd = tomorrowStart;
+  const nextCurrentHour = addUtcHours(getJakartaHourStartUtc(now), 1);
 
   return {
     range: "today",
     label: "Hari ini",
     description: "Ringkasan operasional toko hari ini berdasarkan data transaksi, stok, shift, dan hardware terbaru.",
     comparisonLabel: "dari kemarin",
-    chartDescription: "Penjualan bersih selama tujuh hari terakhir.",
+    chartDescription: "Penjualan bersih per jam hari ini.",
+    chartGranularity: "hour",
+    chartBucketLabel: "Per jam",
     topProductsDescription: "Berdasarkan penjualan hari ini.",
     currentStart,
     currentEnd,
     previousStart: getJakartaDayStartUtc(now, -1),
     previousEnd: currentStart,
-    trendStart: addUtcDays(currentStart, -6),
-    trendEnd: currentEnd,
+    trendStart: currentStart,
+    trendEnd: nextCurrentHour > currentEnd ? currentEnd : nextCurrentHour,
   };
 }
 
@@ -235,19 +264,46 @@ function getJakartaShortDateLabel(date: Date) {
   }).format(date);
 }
 
+function getJakartaHourKey(date: Date) {
+  const shiftedDate = new Date(date.getTime() + JAKARTA_OFFSET_MS);
+
+  return [
+    shiftedDate.getUTCFullYear(),
+    String(shiftedDate.getUTCMonth() + 1).padStart(2, "0"),
+    String(shiftedDate.getUTCDate()).padStart(2, "0"),
+    String(shiftedDate.getUTCHours()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getJakartaHourLabel(date: Date) {
+  const shiftedDate = new Date(date.getTime() + JAKARTA_OFFSET_MS);
+
+  return `${String(shiftedDate.getUTCHours()).padStart(2, "0")}.00`;
+}
+
 function createTrendSkeleton({
   start,
   end,
+  granularity,
 }: {
   start: Date;
   end: Date;
+  granularity: AdminDashboardTrendGranularity;
 }): AdminDashboardTrendPoint[] {
   const points: AdminDashboardTrendPoint[] = [];
+  const increment = granularity === "hour" ? addUtcHours : addUtcDays;
+  const maxPoints = granularity === "hour" ? 24 : 31;
 
-  for (let cursor = start; cursor < end && points.length < 31; cursor = addUtcDays(cursor, 1)) {
+  for (let cursor = start; cursor < end && points.length < maxPoints; cursor = increment(cursor, 1)) {
     points.push({
-      dateKey: getJakartaDateKey(cursor),
-      label: getJakartaShortDateLabel(cursor),
+      dateKey:
+        granularity === "hour"
+          ? getJakartaHourKey(cursor)
+          : getJakartaDateKey(cursor),
+      label:
+        granularity === "hour"
+          ? getJakartaHourLabel(cursor)
+          : getJakartaShortDateLabel(cursor),
       revenue: 0,
       transactionCount: 0,
       itemSold: 0,
@@ -402,6 +458,7 @@ function createEmptyDashboard(
     trend: createTrendSkeleton({
       start: period.trendStart ?? period.currentStart,
       end: period.trendEnd ?? period.currentEnd,
+      granularity: period.chartGranularity,
     }),
     topProducts: [],
     recentTransactions: [],
@@ -437,7 +494,10 @@ export async function getAdminDashboardData(
   const trendStart = period.trendStart;
   const trendEnd = period.trendEnd;
   const staleAgentCutoff = new Date(now.getTime() - 5 * 60 * 1000);
-  const localDaySql = sql<string>`to_char(${sales.completedAt} at time zone 'Asia/Jakarta', 'YYYY-MM-DD')`;
+  const trendBucketSql =
+    period.chartGranularity === "hour"
+      ? sql<string>`to_char(${sales.completedAt} at time zone 'Asia/Jakarta', 'YYYY-MM-DD-HH24')`
+      : sql<string>`to_char(${sales.completedAt} at time zone 'Asia/Jakarta', 'YYYY-MM-DD')`;
 
   const [
     todaySalesRows,
@@ -624,7 +684,7 @@ export async function getAdminDashboardData(
 
     db
       .select({
-        day: localDaySql,
+        bucket: trendBucketSql,
         revenue: sql<number>`coalesce(sum(${sales.totalAmount}), 0)`.mapWith(Number),
         transactionCount: count(),
       })
@@ -638,8 +698,8 @@ export async function getAdminDashboardData(
           lt(sales.completedAt, trendEnd),
         ),
       )
-      .groupBy(localDaySql)
-      .orderBy(localDaySql),
+      .groupBy(trendBucketSql)
+      .orderBy(trendBucketSql),
 
     db
       .select({
@@ -724,7 +784,7 @@ export async function getAdminDashboardData(
 
   const trendByDate = new Map<string, { revenue: number; transactionCount: number }>(
     trendRows.map((row) => [
-      row.day,
+      row.bucket,
       {
         revenue: toNumber(row.revenue),
         transactionCount: Number(row.transactionCount ?? 0),
@@ -732,7 +792,11 @@ export async function getAdminDashboardData(
     ]),
   );
 
-  const trend = createTrendSkeleton({ start: trendStart, end: trendEnd }).map((point) => {
+  const trend = createTrendSkeleton({
+    start: trendStart,
+    end: trendEnd,
+    granularity: period.chartGranularity,
+  }).map((point) => {
     const row = trendByDate.get(point.dateKey);
 
     return {

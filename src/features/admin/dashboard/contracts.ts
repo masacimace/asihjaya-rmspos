@@ -5,12 +5,16 @@ export type AdminDashboardPeriodRange =
   | "last30"
   | "thisMonth";
 
+export type AdminDashboardTrendGranularity = "hour" | "day";
+
 export type AdminDashboardPeriod = {
   range: AdminDashboardPeriodRange;
   label: string;
   description: string;
   comparisonLabel: string;
   chartDescription: string;
+  chartGranularity: AdminDashboardTrendGranularity;
+  chartBucketLabel: string;
   topProductsDescription: string;
   currentStart: Date;
   currentEnd: Date;
