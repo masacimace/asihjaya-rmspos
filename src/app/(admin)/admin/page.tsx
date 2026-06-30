@@ -3,6 +3,7 @@ import {
   BadgeDollarSign,
   Boxes,
   CalendarDays,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
@@ -11,42 +12,23 @@ import {
   ScanBarcode,
   ShoppingBag,
   Store,
+  TrendingDown,
   TrendingUp,
   UsersRound,
   WalletCards,
+  WifiOff,
 } from "lucide-react";
 import Link from "next/link";
 
-const statisticCards = [
-  {
-    label: "Penjualan Bersih",
-    value: "Rp18.750.000",
-    comparison: "12,5% dari periode sebelumnya",
-    icon: BadgeDollarSign,
-    iconClassName: "bg-amber-50 text-amber-700",
-  },
-  {
-    label: "Jumlah Transaksi",
-    value: "6",
-    comparison: "8,3% dari periode sebelumnya",
-    icon: ReceiptText,
-    iconClassName: "bg-violet-50 text-violet-700",
-  },
-  {
-    label: "Item Terjual",
-    value: "7",
-    comparison: "15,7% dari periode sebelumnya",
-    icon: ShoppingBag,
-    iconClassName: "bg-blue-50 text-blue-700",
-  },
-  {
-    label: "Rata-rata Transaksi",
-    value: "Rp3.125.000",
-    comparison: "5,2% dari periode sebelumnya",
-    icon: WalletCards,
-    iconClassName: "bg-emerald-50 text-emerald-700",
-  },
-] as const;
+import type {
+  AdminDashboardActivityKind,
+  AdminDashboardAlertTone,
+  AdminDashboardRecentTransaction,
+  AdminDashboardTrendPoint,
+  DashboardComparisonMetric,
+} from "@/features/admin/dashboard/contracts";
+import { getAdminDashboardData } from "@/features/admin/dashboard/queries";
+import { requirePermission } from "@/lib/auth/session";
 
 const quickActions = [
   {
@@ -75,128 +57,205 @@ const quickActions = [
   },
 ] as const;
 
-const operationalAlerts = [
-  {
-    title: "2 item belum memiliki label",
-    description: "Item baru perlu dicetak labelnya.",
-    tone: "warning",
+const statusMeta: Record<
+  AdminDashboardRecentTransaction["status"],
+  { label: string; className: string }
+> = {
+  draft: {
+    label: "Draft",
+    className: "bg-neutral-100 text-neutral-600",
   },
-  {
-    title: "Shift hari ini masih aktif",
-    description: "Dibuka pukul 09.02 oleh Hanita.",
-    tone: "neutral",
+  awaiting_payment: {
+    label: "Menunggu",
+    className: "bg-amber-50 text-amber-700",
   },
-  {
-    title: "1 persetujuan menunggu",
-    description: "Permintaan perubahan harga item.",
-    tone: "danger",
+  completed: {
+    label: "Selesai",
+    className: "bg-emerald-50 text-emerald-700",
   },
-] as const;
+  cancelled: {
+    label: "Dibatalkan",
+    className: "bg-neutral-100 text-neutral-600",
+  },
+  voided: {
+    label: "Void",
+    className: "bg-red-50 text-red-600",
+  },
+  partially_refunded: {
+    label: "Refund Parsial",
+    className: "bg-orange-50 text-orange-700",
+  },
+  refunded: {
+    label: "Refund",
+    className: "bg-orange-50 text-orange-700",
+  },
+};
 
-const topProducts = [
-  {
-    rank: 1,
-    name: "Gelang Cartier Oval",
-    detail: "3 item terjual",
-    revenue: "Rp11.055.000",
-  },
-  {
-    rank: 2,
-    name: "Kalung Anak 6K",
-    detail: "2 item terjual",
-    revenue: "Rp7.430.000",
-  },
-  {
-    rank: 3,
-    name: "Cincin Mata Berlian",
-    detail: "1 item terjual",
-    revenue: "Rp5.850.000",
-  },
-  {
-    rank: 4,
-    name: "Anting Poles Anak",
-    detail: "1 item terjual",
-    revenue: "Rp2.750.000",
-  },
-] as const;
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
-const recentTransactions = [
-  {
-    invoice: "INV/BG/2026/000126",
-    customer: "Kiki",
-    total: "Rp3.685.000",
-    status: "Selesai",
-    statusClassName: "bg-emerald-50 text-emerald-700",
-  },
-  {
-    invoice: "INV/BG/2026/000125",
-    customer: "Siti Rahma",
-    total: "Rp5.850.000",
-    status: "Selesai",
-    statusClassName: "bg-emerald-50 text-emerald-700",
-  },
-  {
-    invoice: "INV/BG/2026/000124",
-    customer: "Andini",
-    total: "Rp2.750.000",
-    status: "Menunggu",
-    statusClassName: "bg-amber-50 text-amber-700",
-  },
-  {
-    invoice: "INV/BG/2026/000123",
-    customer: "Budi Santoso",
-    total: "Rp6.465.000",
-    status: "Selesai",
-    statusClassName: "bg-emerald-50 text-emerald-700",
-  },
-] as const;
+function formatInteger(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
-const recentActivities = [
-  {
-    title: "Transaksi baru berhasil",
-    description: "INV/BG/2026/000126 · 10.24",
-    value: "Rp3.685.000",
-    icon: ReceiptText,
-    iconClassName: "bg-emerald-50 text-emerald-700",
-  },
-  {
-    title: "Pelanggan baru ditambahkan",
-    description: "Kiki · 09.15",
-    value: null,
-    icon: UsersRound,
-    iconClassName: "bg-blue-50 text-blue-700",
-  },
-  {
-    title: "Item produk diperbarui",
-    description: "Barcode 732779 · 08.45",
-    value: null,
-    icon: Boxes,
-    iconClassName: "bg-amber-50 text-amber-700",
-  },
-  {
-    title: "Perubahan harga diajukan",
-    description: "Menunggu persetujuan owner",
-    value: null,
-    icon: ClipboardCheck,
-    iconClassName: "bg-violet-50 text-violet-700",
-  },
-] as const;
+function formatCompactMoney(value: number) {
+  if (value <= 0) return "0";
 
-function SalesChart() {
+  if (value >= 1_000_000_000) {
+    return `${new Intl.NumberFormat("id-ID", {
+      maximumFractionDigits: value >= 10_000_000_000 ? 0 : 1,
+    }).format(value / 1_000_000_000)}M`;
+  }
+
+  if (value >= 1_000_000) {
+    return `${new Intl.NumberFormat("id-ID", {
+      maximumFractionDigits: value >= 10_000_000 ? 0 : 1,
+    }).format(value / 1_000_000)}Jt`;
+  }
+
+  if (value >= 1_000) {
+    return `${new Intl.NumberFormat("id-ID", {
+      maximumFractionDigits: 0,
+    }).format(value / 1_000)}Rb`;
+  }
+
+  return formatInteger(value);
+}
+
+function formatDateTime(value: Date | null) {
+  if (!value) return "-";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(value);
+}
+
+function getComparison(metric: DashboardComparisonMetric) {
+  const delta = metric.current - metric.previous;
+
+  if (metric.previous === 0) {
+    if (metric.current === 0) {
+      return {
+        tone: "neutral" as const,
+        value: "0%",
+        label: "belum ada data kemarin",
+      };
+    }
+
+    return {
+      tone: "up" as const,
+      value: "Baru",
+      label: "dibanding kemarin",
+    };
+  }
+
+  const percentage = (delta / metric.previous) * 100;
+  const formattedPercentage = new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 1,
+  }).format(Math.abs(percentage));
+
+  if (Math.abs(percentage) < 0.1) {
+    return {
+      tone: "neutral" as const,
+      value: "Stabil",
+      label: "dari kemarin",
+    };
+  }
+
+  return {
+    tone: percentage > 0 ? ("up" as const) : ("down" as const),
+    value: `${formattedPercentage}%`,
+    label: "dari kemarin",
+  };
+}
+
+function getRoundedChartMax(value: number) {
+  if (value <= 0) return 5_000_000;
+
+  const step = value >= 50_000_000 ? 10_000_000 : 5_000_000;
+
+  return Math.ceil(value / step) * step;
+}
+
+function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
+  const width = 760;
+  const left = 50;
+  const right = 750;
+  const top = 35;
+  const bottom = 235;
+  const chartWidth = right - left;
+  const maxRevenue = Math.max(...points.map((point) => point.revenue), 0);
+  const maxAxisValue = getRoundedChartMax(maxRevenue);
+  const chartPoints = points.map((point, index) => {
+    const x =
+      points.length === 1
+        ? left
+        : left + (chartWidth / Math.max(points.length - 1, 1)) * index;
+    const y = bottom - (point.revenue / maxAxisValue) * (bottom - top);
+
+    return { ...point, x, y };
+  });
+  const linePath = chartPoints
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x} ${point.y}`)
+    .join(" ");
+  const areaPath = chartPoints.length
+    ? `${linePath} L${chartPoints[chartPoints.length - 1]?.x ?? right} ${bottom} L${chartPoints[0]?.x ?? left} ${bottom} Z`
+    : "";
+  const highlightedPoint = chartPoints.reduce(
+    (selected, point) => (point.revenue > selected.revenue ? point : selected),
+    chartPoints[0] ?? {
+      dateKey: "",
+      label: "",
+      revenue: 0,
+      transactionCount: 0,
+      itemSold: 0,
+      x: left,
+      y: bottom,
+    },
+  );
+  const gridValues = [
+    maxAxisValue,
+    maxAxisValue * 0.75,
+    maxAxisValue * 0.5,
+    maxAxisValue * 0.25,
+    0,
+  ];
+
   return (
     <div className="mt-6">
       <div className="relative h-[250px] w-full sm:h-[280px]">
-        <div className="pointer-events-none absolute left-[48%] top-0 z-10 -translate-x-1/2 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-xs shadow-lg">
-          <p className="text-[var(--muted)]">15 Juni 2026</p>
-          <p className="mt-0.5 font-semibold text-neutral-950">Rp18.750.000</p>
-        </div>
+        {highlightedPoint.revenue > 0 ? (
+          <div
+            className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-xs shadow-lg"
+            style={{
+              left: `${(highlightedPoint.x / width) * 100}%`,
+              top: `${Math.max(highlightedPoint.y - 48, 0)}px`,
+            }}
+          >
+            <p className="text-[var(--muted)]">{highlightedPoint.label}</p>
+            <p className="mt-0.5 font-semibold text-neutral-950">
+              {formatMoney(highlightedPoint.revenue)}
+            </p>
+          </div>
+        ) : null}
 
         <svg
           viewBox="0 0 760 260"
           preserveAspectRatio="none"
           className="h-full w-full overflow-visible"
           role="img"
-          aria-label="Grafik ringkasan penjualan"
+          aria-label="Grafik ringkasan penjualan tujuh hari terakhir"
         >
           <defs>
             <linearGradient id="salesAreaGradient" x1="0" x2="0" y1="0" y2="1">
@@ -209,11 +268,11 @@ function SalesChart() {
             </linearGradient>
           </defs>
 
-          {[35, 85, 135, 185, 235].map((y) => (
+          {[top, top + 50, top + 100, top + 150, bottom].map((y) => (
             <line
               key={y}
-              x1="50"
-              x2="750"
+              x1={left}
+              x2={right}
               y1={y}
               y2={y}
               stroke="var(--border)"
@@ -222,48 +281,25 @@ function SalesChart() {
             />
           ))}
 
-          <path
-            d="M50 215
-               C105 180 125 165 170 150
-               C225 125 250 118 290 115
-               C345 108 355 70 420 67
-               C470 65 485 92 540 94
-               C600 96 630 100 670 105
-               C710 112 725 150 750 170
-               L750 235
-               L50 235
-               Z"
-            fill="url(#salesAreaGradient)"
-          />
+          {areaPath ? <path d={areaPath} fill="url(#salesAreaGradient)" /> : null}
 
-          <path
-            d="M50 215
-               C105 180 125 165 170 150
-               C225 125 250 118 290 115
-               C345 108 355 70 420 67
-               C470 65 485 92 540 94
-               C600 96 630 100 670 105
-               C710 112 725 150 750 170"
-            fill="none"
-            stroke="var(--accent)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
+          {linePath ? (
+            <path
+              d={linePath}
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
 
-          {[
-            { x: 50, y: 215 },
-            { x: 170, y: 150 },
-            { x: 290, y: 115 },
-            { x: 420, y: 67 },
-            { x: 540, y: 94 },
-            { x: 670, y: 105 },
-            { x: 750, y: 170 },
-          ].map(({ x, y }) => (
+          {chartPoints.map((point) => (
             <circle
-              key={`${x}-${y}`}
-              cx={x}
-              cy={y}
+              key={point.dateKey}
+              cx={point.x}
+              cy={point.y}
               r="4"
               fill="white"
               stroke="var(--accent)"
@@ -274,38 +310,130 @@ function SalesChart() {
         </svg>
 
         <div className="pointer-events-none absolute inset-y-0 left-0 flex w-10 flex-col justify-between pb-5 pt-7 text-[10px] text-[var(--muted)] sm:text-xs">
-          <span>20Jt</span>
-          <span>15Jt</span>
-          <span>10Jt</span>
-          <span>5Jt</span>
-          <span>0</span>
+          {gridValues.map((value) => (
+            <span key={value}>{formatCompactMoney(value)}</span>
+          ))}
         </div>
       </div>
 
       <div className="ml-10 grid grid-cols-7 text-center text-[10px] text-[var(--muted)] sm:text-xs">
-        <span>12 Jun</span>
-        <span>13 Jun</span>
-        <span>14 Jun</span>
-        <span>15 Jun</span>
-        <span>16 Jun</span>
-        <span>17 Jun</span>
-        <span>18 Jun</span>
+        {points.map((point) => (
+          <span key={point.dateKey}>{point.label}</span>
+        ))}
       </div>
     </div>
   );
 }
 
-export default function AdminDashboardPage() {
+function getAlertToneClass(tone: AdminDashboardAlertTone) {
+  if (tone === "success") return "bg-emerald-50 text-emerald-700";
+  if (tone === "danger") return "bg-red-50 text-red-600";
+  if (tone === "warning") return "bg-amber-50 text-amber-700";
+
+  return "bg-neutral-100 text-neutral-600";
+}
+
+function getActivityIcon(kind: AdminDashboardActivityKind) {
+  if (kind === "sale") return ReceiptText;
+  if (kind === "customer") return UsersRound;
+  if (kind === "inventory") return Boxes;
+  if (kind === "product") return ShoppingBag;
+  if (kind === "shift") return Store;
+  if (kind === "hold_cart") return ClipboardCheck;
+  if (kind === "approval") return ClipboardCheck;
+  if (kind === "administration") return UsersRound;
+
+  return ClipboardCheck;
+}
+
+function getActivityIconClass(kind: AdminDashboardActivityKind) {
+  if (kind === "sale") return "bg-emerald-50 text-emerald-700";
+  if (kind === "customer") return "bg-blue-50 text-blue-700";
+  if (kind === "inventory" || kind === "product") return "bg-amber-50 text-amber-700";
+  if (kind === "shift") return "bg-neutral-100 text-neutral-600";
+  if (kind === "approval") return "bg-violet-50 text-violet-700";
+
+  return "bg-[var(--accent-soft)] text-[var(--accent)]";
+}
+
+export default async function AdminDashboardPage() {
+  const auth = await requirePermission("admin.access");
+  const dashboard = await getAdminDashboardData(auth);
+  const firstName = auth.user.fullName.split(" ")[0] ?? auth.user.fullName;
+  const statisticCards = [
+    {
+      label: "Penjualan Bersih",
+      value: formatMoney(dashboard.summary.revenue.current),
+      metric: dashboard.summary.revenue,
+      icon: BadgeDollarSign,
+      iconClassName: "bg-amber-50 text-amber-700",
+    },
+    {
+      label: "Jumlah Transaksi",
+      value: formatInteger(dashboard.summary.transactionCount.current),
+      metric: dashboard.summary.transactionCount,
+      icon: ReceiptText,
+      iconClassName: "bg-violet-50 text-violet-700",
+    },
+    {
+      label: "Item Terjual",
+      value: formatInteger(dashboard.summary.itemSold.current),
+      metric: dashboard.summary.itemSold,
+      icon: ShoppingBag,
+      iconClassName: "bg-blue-50 text-blue-700",
+    },
+    {
+      label: "Rata-rata Transaksi",
+      value: formatMoney(dashboard.summary.averageTransaction.current),
+      metric: dashboard.summary.averageTransaction,
+      icon: WalletCards,
+      iconClassName: "bg-emerald-50 text-emerald-700",
+    },
+  ];
+  const operationalStatusCards = [
+    {
+      label: "Stok Tersedia",
+      value: formatInteger(dashboard.summary.availableStock),
+      description: "Item aktif siap jual",
+      icon: Boxes,
+      iconClassName: "bg-blue-50 text-blue-700",
+    },
+    {
+      label: "Transaksi Tertahan",
+      value: formatInteger(dashboard.summary.activeHeldCarts),
+      description: "Hold cart aktif",
+      icon: ClipboardCheck,
+      iconClassName: "bg-amber-50 text-amber-700",
+    },
+    {
+      label: "Shift Aktif",
+      value: formatInteger(dashboard.summary.activeShifts),
+      description: "Shift kasir berjalan",
+      icon: Store,
+      iconClassName: "bg-neutral-100 text-neutral-700",
+    },
+    {
+      label: "Print Job Gagal",
+      value: formatInteger(dashboard.summary.failedHardwareJobsToday),
+      description: "Kegagalan hari ini",
+      icon: WifiOff,
+      iconClassName:
+        dashboard.summary.failedHardwareJobsToday > 0
+          ? "bg-red-50 text-red-600"
+          : "bg-emerald-50 text-emerald-700",
+    },
+  ];
+
   return (
     <div className="space-y-5 lg:space-y-6">
-      {/* Header dashboard */}
       <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-950 sm:text-[28px]">
-            Selamat datang kembali, Admin 👋
+            Selamat datang kembali, {firstName} 👋
           </h1>
           <p className="mt-1.5 text-sm text-[var(--muted)]">
-            Berikut ringkasan operasional toko hari ini.
+            Berikut ringkasan operasional toko hari ini berdasarkan data transaksi,
+            stok, shift, dan hardware terbaru.
           </p>
         </div>
 
@@ -320,48 +448,88 @@ export default function AdminDashboardPage() {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        {/* Konten utama */}
         <div className="min-w-0 space-y-5">
-          {/* KPI */}
           <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             {statisticCards.map(
-              ({ label, value, comparison, icon: Icon, iconClassName }) => (
+              ({ label, value, metric, icon: Icon, iconClassName }) => {
+                const comparison = getComparison(metric);
+                const TrendIcon =
+                  comparison.tone === "down"
+                    ? TrendingDown
+                    : comparison.tone === "neutral"
+                      ? CheckCircle2
+                      : TrendingUp;
+                const toneClassName =
+                  comparison.tone === "down"
+                    ? "text-red-600"
+                    : comparison.tone === "neutral"
+                      ? "text-neutral-500"
+                      : "text-[var(--success)]";
+
+                return (
+                  <article
+                    key={label}
+                    className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`grid size-11 shrink-0 place-items-center rounded-full ${iconClassName}`}
+                      >
+                        <Icon className="size-5" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-xs text-[var(--muted)] sm:text-sm">
+                          {label}
+                        </p>
+                        <p className="mt-1 truncate text-xl font-semibold tracking-tight text-neutral-950">
+                          {value}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-1.5 text-xs">
+                      <TrendIcon className={`size-3.5 ${toneClassName}`} />
+                      <span className={`font-medium ${toneClassName}`}>
+                        {comparison.value}
+                      </span>
+                      <span className="truncate text-[var(--muted)]">
+                        {comparison.label}
+                      </span>
+                    </div>
+                  </article>
+                );
+              },
+            )}
+          </section>
+
+          <section className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+            {operationalStatusCards.map(
+              ({ label, value, description, icon: Icon, iconClassName }) => (
                 <article
                   key={label}
-                  className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5"
+                  className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                 >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`grid size-11 shrink-0 place-items-center rounded-full ${iconClassName}`}
-                    >
-                      <Icon className="size-5" />
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-xs text-[var(--muted)] sm:text-sm">
-                        {label}
-                      </p>
-                      <p className="mt-1 truncate text-xl font-semibold tracking-tight text-neutral-950">
-                        {value}
-                      </p>
-                    </div>
+                  <div
+                    className={`grid size-10 shrink-0 place-items-center rounded-xl ${iconClassName}`}
+                  >
+                    <Icon className="size-5" />
                   </div>
 
-                  <div className="mt-4 flex items-center gap-1.5 text-xs">
-                    <TrendingUp className="size-3.5 text-[var(--success)]" />
-                    <span className="font-medium text-[var(--success)]">
-                      {comparison.split(" ")[0]}
-                    </span>
-                    <span className="truncate text-[var(--muted)]">
-                      {comparison.replace(`${comparison.split(" ")[0]} `, "")}
-                    </span>
+                  <div className="min-w-0">
+                    <p className="text-xs text-[var(--muted)]">{label}</p>
+                    <p className="mt-0.5 text-lg font-semibold text-neutral-950">
+                      {value}
+                    </p>
+                    <p className="truncate text-[11px] text-[var(--muted)]">
+                      {description}
+                    </p>
                   </div>
                 </article>
               ),
             )}
           </section>
 
-          {/* Chart */}
           <section className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -382,12 +550,10 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            <SalesChart />
+            <SalesChart points={dashboard.trend} />
           </section>
 
-          {/* Bagian bawah */}
           <section className="grid gap-5 2xl:grid-cols-[0.9fr_1.25fr]">
-            {/* Produk terlaris */}
             <article className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -407,35 +573,40 @@ export default function AdminDashboardPage() {
                 </Link>
               </div>
 
-              <div className="mt-5 space-y-4">
-                {topProducts.map((product) => (
-                  <div key={product.rank} className="flex items-center gap-3">
-                    <div className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--accent-soft)] text-xs font-semibold text-[var(--accent)]">
-                      {product.rank}
-                    </div>
+              {dashboard.topProducts.length > 0 ? (
+                <div className="mt-5 space-y-4">
+                  {dashboard.topProducts.map((product) => (
+                    <div key={product.productId} className="flex items-center gap-3">
+                      <div className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--accent-soft)] text-xs font-semibold text-[var(--accent)]">
+                        {product.rank}
+                      </div>
 
-                    <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--surface-muted)] text-[var(--accent)]">
-                      <ShoppingBag className="size-4" />
-                    </div>
+                      <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--surface-muted)] text-[var(--accent)]">
+                        <ShoppingBag className="size-4" />
+                      </div>
 
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-neutral-900">
-                        {product.name}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-neutral-900">
+                          {product.productName}
+                        </p>
+                        <p className="mt-0.5 text-xs text-[var(--muted)]">
+                          {formatInteger(product.itemSold)} item terjual
+                        </p>
+                      </div>
+
+                      <p className="shrink-0 text-xs font-medium text-neutral-700">
+                        {formatMoney(product.revenue)}
                       </p>
-                      <p className="mt-0.5 text-xs text-[var(--muted)]">
-                        {product.detail}
-                      </p>
                     </div>
-
-                    <p className="shrink-0 text-xs font-medium text-neutral-700">
-                      {product.revenue}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-5 text-center text-xs text-[var(--muted)]">
+                  Belum ada penjualan produk dalam 30 hari terakhir.
+                </div>
+              )}
             </article>
 
-            {/* Transaksi terbaru */}
             <article className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
               <div className="flex items-center justify-between gap-4 p-4 sm:p-5">
                 <div>
@@ -467,29 +638,54 @@ export default function AdminDashboardPage() {
                   </thead>
 
                   <tbody>
-                    {recentTransactions.map((transaction) => (
-                      <tr
-                        key={transaction.invoice}
-                        className="border-b border-[var(--border)] last:border-b-0"
-                      >
-                        <td className="px-5 py-3.5 text-xs font-medium text-neutral-900">
-                          {transaction.invoice}
-                        </td>
-                        <td className="px-4 py-3.5 text-xs text-neutral-700">
-                          {transaction.customer}
-                        </td>
-                        <td className="px-4 py-3.5 text-xs font-medium text-neutral-900">
-                          {transaction.total}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${transaction.statusClassName}`}
+                    {dashboard.recentTransactions.length > 0 ? (
+                      dashboard.recentTransactions.map((transaction) => {
+                        const meta = statusMeta[transaction.status];
+
+                        return (
+                          <tr
+                            key={transaction.id}
+                            className="border-b border-[var(--border)] last:border-b-0"
                           >
-                            {transaction.status}
-                          </span>
+                            <td className="px-5 py-3.5 text-xs font-medium text-neutral-900">
+                              <Link
+                                href={`/admin/penjualan/${transaction.id}`}
+                                className="hover:text-[var(--accent)] hover:underline"
+                              >
+                                {transaction.invoiceNumber}
+                              </Link>
+                              <p className="mt-1 text-[10px] font-normal text-[var(--muted)]">
+                                {formatDateTime(
+                                  transaction.completedAt ?? transaction.createdAt,
+                                )}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3.5 text-xs text-neutral-700">
+                              {transaction.customerName ?? "Umum"}
+                            </td>
+                            <td className="px-4 py-3.5 text-xs font-medium text-neutral-900">
+                              {formatMoney(transaction.totalAmount)}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${meta.className}`}
+                              >
+                                {meta.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-5 py-8 text-center text-xs text-[var(--muted)]"
+                        >
+                          Belum ada transaksi yang tercatat.
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -497,9 +693,7 @@ export default function AdminDashboardPage() {
           </section>
         </div>
 
-        {/* Panel kanan */}
         <aside className="space-y-5">
-          {/* Quick action */}
           <section className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
             <h2 className="font-semibold text-neutral-950">Aksi Cepat</h2>
 
@@ -524,7 +718,6 @@ export default function AdminDashboardPage() {
             </div>
           </section>
 
-          {/* Perlu perhatian */}
           <section className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-semibold text-neutral-950">
@@ -540,44 +733,42 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="mt-4 divide-y divide-[var(--border)]">
-              {operationalAlerts.map((alert) => (
-                <Link
-                  key={alert.title}
-                  href="/admin/operasional"
-                  className="group flex items-start gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <div
-                    className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl ${
-                      alert.tone === "warning"
-                        ? "bg-amber-50 text-amber-700"
-                        : alert.tone === "danger"
-                          ? "bg-red-50 text-red-600"
-                          : "bg-neutral-100 text-neutral-600"
-                    }`}
+              {dashboard.operationalAlerts.map((alert) => {
+                const AlertIcon =
+                  alert.tone === "success"
+                    ? CheckCircle2
+                    : alert.tone === "neutral"
+                      ? Store
+                      : AlertTriangle;
+
+                return (
+                  <Link
+                    key={alert.id}
+                    href={alert.href}
+                    className="group flex items-start gap-3 py-3 first:pt-0 last:pb-0"
                   >
-                    {alert.tone === "neutral" ? (
-                      <Store className="size-4" />
-                    ) : (
-                      <AlertTriangle className="size-4" />
-                    )}
-                  </div>
+                    <div
+                      className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl ${getAlertToneClass(alert.tone)}`}
+                    >
+                      <AlertIcon className="size-4" />
+                    </div>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium leading-5 text-neutral-900">
-                      {alert.title}
-                    </p>
-                    <p className="mt-0.5 text-[11px] leading-4 text-[var(--muted)]">
-                      {alert.description}
-                    </p>
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium leading-5 text-neutral-900">
+                        {alert.title}
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-[var(--muted)]">
+                        {alert.description}
+                      </p>
+                    </div>
 
-                  <ChevronRight className="mt-2 size-4 shrink-0 text-neutral-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
-                </Link>
-              ))}
+                    <ChevronRight className="mt-2 size-4 shrink-0 text-neutral-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
+                  </Link>
+                );
+              })}
             </div>
           </section>
 
-          {/* Aktivitas terbaru */}
           <section className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-semibold text-neutral-950">
@@ -585,34 +776,42 @@ export default function AdminDashboardPage() {
               </h2>
             </div>
 
-            <div className="mt-4 space-y-4">
-              {recentActivities.map(
-                ({ title, description, value, icon: Icon, iconClassName }) => (
-                  <div key={title} className="flex items-start gap-3">
-                    <div
-                      className={`grid size-9 shrink-0 place-items-center rounded-xl ${iconClassName}`}
-                    >
-                      <Icon className="size-4" />
-                    </div>
+            {dashboard.recentActivities.length > 0 ? (
+              <div className="mt-4 space-y-4">
+                {dashboard.recentActivities.map((activity) => {
+                  const Icon = getActivityIcon(activity.kind);
 
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium leading-5 text-neutral-900">
-                        {title}
-                      </p>
-                      <p className="truncate text-[11px] text-[var(--muted)]">
-                        {description}
-                      </p>
-                    </div>
+                  return (
+                    <div key={activity.id} className="flex items-start gap-3">
+                      <div
+                        className={`grid size-9 shrink-0 place-items-center rounded-xl ${getActivityIconClass(activity.kind)}`}
+                      >
+                        <Icon className="size-4" />
+                      </div>
 
-                    {value ? (
-                      <p className="shrink-0 text-[11px] font-semibold text-[var(--success)]">
-                        {value}
-                      </p>
-                    ) : null}
-                  </div>
-                ),
-              )}
-            </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium leading-5 text-neutral-900">
+                          {activity.title}
+                        </p>
+                        <p className="truncate text-[11px] text-[var(--muted)]">
+                          {activity.description}
+                        </p>
+                      </div>
+
+                      {activity.value ? (
+                        <p className="shrink-0 text-[11px] font-semibold text-[var(--success)]">
+                          {formatMoney(activity.value)}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-4 text-center text-xs text-[var(--muted)]">
+                Belum ada aktivitas terbaru.
+              </div>
+            )}
 
             <Link
               href="/admin/administrasi"
