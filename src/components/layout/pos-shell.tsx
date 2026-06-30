@@ -448,9 +448,9 @@ export function PosShell({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)] lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
+    <div className="h-dvh max-w-[100vw] overflow-hidden bg-[var(--background)] lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
       {/* Sidebar desktop */}
-      <aside className="sticky top-0 hidden h-screen flex-col border-r border-[var(--border)] bg-white p-5 lg:flex">
+      <aside className="hidden h-dvh min-h-0 flex-col overflow-y-auto overflow-x-hidden border-r border-[var(--border)] bg-white p-5 lg:flex">
         <SidebarContent
           pathname={pathname}
           canAccessAdmin={user.canAccessAdmin}
@@ -467,7 +467,7 @@ export function PosShell({
             onClick={() => setIsNavigationOpen(false)}
           />
 
-          <aside className="relative z-10 flex h-full w-[min(86vw,300px)] flex-col border-r border-[var(--border)] bg-white p-5 shadow-2xl">
+          <aside className="relative z-10 flex h-full w-[min(86vw,300px)] max-w-[100vw] flex-col overflow-y-auto overflow-x-hidden border-r border-[var(--border)] bg-white p-5 shadow-2xl">
             <div className="mb-4 flex justify-end">
               <button
                 type="button"
@@ -568,9 +568,9 @@ export function PosShell({
         </div>
       ) : null}
 
-      <div className="flex min-h-screen min-w-0 flex-col">
+      <div className="flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden">
         {/* Topbar */}
-        <header className="sticky top-0 z-40 flex h-[72px] items-center gap-3 border-b border-[var(--border)] bg-white/95 px-4 backdrop-blur sm:px-5 lg:px-6">
+        <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center gap-3 overflow-visible border-b border-[var(--border)] bg-white/95 px-4 backdrop-blur sm:px-5 lg:px-6">
           <Link
             href="/pos"
             className="flex min-w-0 items-center gap-2 lg:hidden"
@@ -620,7 +620,7 @@ export function PosShell({
             </kbd>
           </form>
 
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          <div className="relative z-50 ml-auto flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setIsScannerOpen(true)}
@@ -716,7 +716,7 @@ export function PosShell({
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 pb-[112px] lg:pb-0">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-[112px] lg:pb-0">{children}</main>
 
         {/* Status bar desktop */}
         <footer className="hidden h-12 shrink-0 items-center justify-between border-t border-[var(--border)] bg-white px-5 text-xs text-[var(--muted)] lg:flex lg:px-6">
