@@ -606,14 +606,14 @@ export default async function AdminDashboardPage({
           </p>
         </div>
 
-        <details className="group relative w-fit shrink-0">
-          <summary className="flex h-11 cursor-pointer list-none items-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 marker:content-none [&::-webkit-details-marker]:hidden">
+        <details className="group relative z-30 w-fit max-w-full shrink-0">
+          <summary className="flex h-11 max-w-full cursor-pointer list-none items-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 marker:content-none [&::-webkit-details-marker]:hidden">
             <CalendarDays className="size-4" />
-            <span>{dashboard.period.label}</span>
+            <span className="truncate">{dashboard.period.label}</span>
             <ChevronDown className="size-4 text-neutral-400 transition-transform group-open:rotate-180" />
           </summary>
 
-          <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-2xl border border-[var(--border)] bg-white p-1.5 shadow-xl">
+          <div className="absolute left-0 z-50 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--border)] bg-white p-1.5 shadow-xl sm:left-auto sm:right-0">
             {ADMIN_DASHBOARD_PERIOD_OPTIONS.map((option) => {
               const isActive = option.value === dashboard.period.range;
 
