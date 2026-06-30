@@ -27,7 +27,11 @@ import type {
   AdminDashboardTrendPoint,
   DashboardComparisonMetric,
 } from "@/features/admin/dashboard/contracts";
-import { getAdminDashboardData } from "@/features/admin/dashboard/queries";
+import {
+  ADMIN_DASHBOARD_PERIOD_OPTIONS,
+  getAdminDashboardData,
+  parseAdminDashboardPeriodRange,
+} from "@/features/admin/dashboard/queries";
 import { requirePermission } from "@/lib/auth/session";
 
 const quickActions = [
@@ -56,6 +60,10 @@ const quickActions = [
     icon: TrendingUp,
   },
 ] as const;
+
+function buildDashboardPeriodUrl(range: string) {
+  return range === "today" ? "/admin" : `/admin?range=${range}`;
+}
 
 const statusMeta: Record<
   AdminDashboardRecentTransaction["status"],
@@ -141,7 +149,10 @@ function formatDateTime(value: Date | null) {
   }).format(value);
 }
 
-function getComparison(metric: DashboardComparisonMetric) {
+function getComparison(
+  metric: DashboardComparisonMetric,
+  comparisonLabel: string,
+) {
   const delta = metric.current - metric.previous;
 
   if (metric.previous === 0) {
@@ -149,14 +160,14 @@ function getComparison(metric: DashboardComparisonMetric) {
       return {
         tone: "neutral" as const,
         value: "0%",
-        label: "belum ada data kemarin",
+        label: `belum ada data ${comparisonLabel.replace("dari ", "")}`,
       };
     }
 
     return {
       tone: "up" as const,
       value: "Baru",
-      label: "dibanding kemarin",
+      label: comparisonLabel,
     };
   }
 
@@ -169,14 +180,14 @@ function getComparison(metric: DashboardComparisonMetric) {
     return {
       tone: "neutral" as const,
       value: "Stabil",
-      label: "dari kemarin",
+      label: comparisonLabel,
     };
   }
 
   return {
     tone: percentage > 0 ? ("up" as const) : ("down" as const),
     value: `${formattedPercentage}%`,
-    label: "dari kemarin",
+    label: comparisonLabel,
   };
 }
 
@@ -316,10 +327,24 @@ function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
         </div>
       </div>
 
-      <div className="ml-10 grid min-w-0 grid-cols-7 overflow-hidden text-center text-[10px] text-[var(--muted)] sm:text-xs">
-        {points.map((point) => (
-          <span key={point.dateKey}>{point.label}</span>
-        ))}
+      <div
+        className="ml-10 grid min-w-0 overflow-hidden text-center text-[10px] text-[var(--muted)] sm:text-xs"
+        style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}
+      >
+        {points.map((point, index) => {
+          const labelStep = Math.max(1, Math.ceil(points.length / 7));
+          const shouldShowLabel =
+            index === 0 || index === points.length - 1 || index % labelStep === 0;
+
+          return (
+            <span
+              key={point.dateKey}
+              className={shouldShowLabel ? "truncate" : "sr-only"}
+            >
+              {point.label}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -356,9 +381,15 @@ function getActivityIconClass(kind: AdminDashboardActivityKind) {
   return "bg-[var(--accent-soft)] text-[var(--accent)]";
 }
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const auth = await requirePermission("admin.access");
-  const dashboard = await getAdminDashboardData(auth);
+  const resolvedSearchParams = await searchParams;
+  const selectedRange = parseAdminDashboardPeriodRange(resolvedSearchParams.range);
+  const dashboard = await getAdminDashboardData(auth, selectedRange);
   const firstName = auth.user.fullName.split(" ")[0] ?? auth.user.fullName;
   const statisticCards = [
     {
@@ -415,7 +446,7 @@ export default async function AdminDashboardPage() {
     {
       label: "Print Job Gagal",
       value: formatInteger(dashboard.summary.failedHardwareJobsToday),
-      description: "Kegagalan hari ini",
+      description: "Pada periode ini",
       icon: WifiOff,
       iconClassName:
         dashboard.summary.failedHardwareJobsToday > 0
@@ -432,19 +463,38 @@ export default async function AdminDashboardPage() {
             Selamat datang kembali, {firstName} 👋
           </h1>
           <p className="mt-1.5 text-sm text-[var(--muted)]">
-            Berikut ringkasan operasional toko hari ini berdasarkan data transaksi,
-            stok, shift, dan hardware terbaru.
+            {dashboard.period.description}
           </p>
         </div>
 
-        <button
-          type="button"
-          className="flex h-11 w-fit items-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50"
-        >
-          <CalendarDays className="size-4" />
-          <span>Hari ini</span>
-          <ChevronDown className="size-4 text-neutral-400" />
-        </button>
+        <details className="group relative w-fit shrink-0">
+          <summary className="flex h-11 cursor-pointer list-none items-center gap-3 rounded-xl border border-[var(--border)] bg-white px-4 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 marker:content-none [&::-webkit-details-marker]:hidden">
+            <CalendarDays className="size-4" />
+            <span>{dashboard.period.label}</span>
+            <ChevronDown className="size-4 text-neutral-400 transition-transform group-open:rotate-180" />
+          </summary>
+
+          <div className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-2xl border border-[var(--border)] bg-white p-1.5 shadow-xl">
+            {ADMIN_DASHBOARD_PERIOD_OPTIONS.map((option) => {
+              const isActive = option.value === dashboard.period.range;
+
+              return (
+                <Link
+                  key={option.value}
+                  href={buildDashboardPeriodUrl(option.value)}
+                  className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${
+                    isActive
+                      ? "bg-[var(--accent-soft)] font-medium text-[var(--accent)]"
+                      : "text-neutral-700 hover:bg-neutral-50"
+                  }`}
+                >
+                  <span>{option.label}</span>
+                  {isActive ? <CheckCircle2 className="size-4" /> : null}
+                </Link>
+              );
+            })}
+          </div>
+        </details>
       </section>
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -452,7 +502,10 @@ export default async function AdminDashboardPage() {
           <section className="grid min-w-0 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             {statisticCards.map(
               ({ label, value, metric, icon: Icon, iconClassName }) => {
-                const comparison = getComparison(metric);
+                const comparison = getComparison(
+                  metric,
+                  dashboard.period.comparisonLabel,
+                );
                 const TrendIcon =
                   comparison.tone === "down"
                     ? TrendingDown
@@ -537,17 +590,13 @@ export default async function AdminDashboardPage() {
                   Ringkasan Penjualan
                 </h2>
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  Penjualan bersih selama tujuh hari terakhir.
+                  {dashboard.period.chartDescription}
                 </p>
               </div>
 
-              <button
-                type="button"
-                className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50"
-              >
-                Harian
-                <ChevronDown className="size-3.5 text-neutral-400" />
-              </button>
+              <span className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-neutral-600">
+                Per hari
+              </span>
             </div>
 
             <SalesChart points={dashboard.trend} />
@@ -561,7 +610,7 @@ export default async function AdminDashboardPage() {
                     Produk Terlaris
                   </h2>
                   <p className="mt-1 text-xs text-[var(--muted)]">
-                    Berdasarkan 30 hari terakhir.
+                    {dashboard.period.topProductsDescription}
                   </p>
                 </div>
 
@@ -680,7 +729,7 @@ export default async function AdminDashboardPage() {
                     Transaksi Terbaru
                   </h2>
                   <p className="mt-1 text-xs text-[var(--muted)]">
-                    Aktivitas transaksi outlet terbaru.
+                    Transaksi outlet terbaru pada periode ini.
                   </p>
                 </div>
 

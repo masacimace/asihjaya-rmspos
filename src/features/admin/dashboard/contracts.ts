@@ -1,3 +1,21 @@
+export type AdminDashboardPeriodRange =
+  | "today"
+  | "yesterday"
+  | "last7"
+  | "last30"
+  | "thisMonth";
+
+export type AdminDashboardPeriod = {
+  range: AdminDashboardPeriodRange;
+  label: string;
+  description: string;
+  comparisonLabel: string;
+  chartDescription: string;
+  topProductsDescription: string;
+  currentStart: Date;
+  currentEnd: Date;
+};
+
 export type DashboardComparisonMetric = {
   current: number;
   previous: number;
@@ -22,12 +40,22 @@ export type AdminDashboardTrendPoint = {
   itemSold: number;
 };
 
+export type AdminDashboardTopProductItem = {
+  itemId: string;
+  sku: string;
+  barcode: string;
+  itemName: string;
+  itemSold: number;
+  revenue: number;
+};
+
 export type AdminDashboardTopProduct = {
   rank: number;
   productId: string;
   productName: string;
   itemSold: number;
   revenue: number;
+  items: AdminDashboardTopProductItem[];
 };
 
 export type AdminDashboardSaleStatus =
@@ -80,6 +108,7 @@ export type AdminDashboardRecentActivity = {
 };
 
 export type AdminDashboardData = {
+  period: AdminDashboardPeriod;
   summary: AdminDashboardSummary;
   trend: AdminDashboardTrendPoint[];
   topProducts: AdminDashboardTopProduct[];

@@ -33,8 +33,11 @@ import type { AuthContext } from "@/lib/auth/session";
 import type {
   AdminDashboardActivityKind,
   AdminDashboardData,
+  AdminDashboardPeriod,
+  AdminDashboardPeriodRange,
   AdminDashboardOperationalAlert,
   AdminDashboardRecentActivity,
+  AdminDashboardTopProductItem,
   AdminDashboardTrendPoint,
 } from "./contracts";
 
@@ -59,6 +62,161 @@ function getJakartaDayStartUtc(date: Date, dayOffset = 0) {
   );
 }
 
+function addUtcDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function getJakartaMonthStartUtc(date: Date, monthOffset = 0) {
+  const parts = getJakartaDateParts(date);
+
+  return new Date(
+    Date.UTC(parts.year, parts.month + monthOffset, 1) - JAKARTA_OFFSET_MS,
+  );
+}
+
+export const ADMIN_DASHBOARD_PERIOD_OPTIONS: Array<{
+  value: AdminDashboardPeriodRange;
+  label: string;
+}> = [
+  { value: "today", label: "Hari ini" },
+  { value: "yesterday", label: "Kemarin" },
+  { value: "last7", label: "7 hari terakhir" },
+  { value: "last30", label: "30 hari terakhir" },
+  { value: "thisMonth", label: "Bulan ini" },
+];
+
+export function parseAdminDashboardPeriodRange(
+  value: string | string[] | undefined,
+): AdminDashboardPeriodRange {
+  const range = Array.isArray(value) ? value[0] : value;
+
+  if (
+    range === "yesterday" ||
+    range === "last7" ||
+    range === "last30" ||
+    range === "thisMonth"
+  ) {
+    return range;
+  }
+
+  return "today";
+}
+
+function createPeriodMetadata({
+  range,
+  now,
+}: {
+  range: AdminDashboardPeriodRange;
+  now: Date;
+}): AdminDashboardPeriod & {
+  previousStart: Date;
+  previousEnd: Date;
+  trendStart: Date;
+  trendEnd: Date;
+} {
+  const todayStart = getJakartaDayStartUtc(now);
+  const tomorrowStart = getJakartaDayStartUtc(now, 1);
+
+  if (range === "yesterday") {
+    const currentStart = getJakartaDayStartUtc(now, -1);
+    const currentEnd = todayStart;
+
+    return {
+      range,
+      label: "Kemarin",
+      description: "Ringkasan operasional toko untuk hari kemarin.",
+      comparisonLabel: "dari hari sebelumnya",
+      chartDescription: "Penjualan bersih selama tujuh hari sampai kemarin.",
+      topProductsDescription: "Berdasarkan penjualan kemarin.",
+      currentStart,
+      currentEnd,
+      previousStart: getJakartaDayStartUtc(now, -2),
+      previousEnd: currentStart,
+      trendStart: addUtcDays(currentStart, -6),
+      trendEnd: currentEnd,
+    };
+  }
+
+  if (range === "last7") {
+    const currentStart = getJakartaDayStartUtc(now, -6);
+    const currentEnd = tomorrowStart;
+
+    return {
+      range,
+      label: "7 hari terakhir",
+      description: "Ringkasan operasional toko untuk tujuh hari terakhir.",
+      comparisonLabel: "dari 7 hari sebelumnya",
+      chartDescription: "Penjualan bersih selama tujuh hari terakhir.",
+      topProductsDescription: "Berdasarkan 7 hari terakhir.",
+      currentStart,
+      currentEnd,
+      previousStart: addUtcDays(currentStart, -7),
+      previousEnd: currentStart,
+      trendStart: currentStart,
+      trendEnd: currentEnd,
+    };
+  }
+
+  if (range === "last30") {
+    const currentStart = getJakartaDayStartUtc(now, -29);
+    const currentEnd = tomorrowStart;
+
+    return {
+      range,
+      label: "30 hari terakhir",
+      description: "Ringkasan operasional toko untuk tiga puluh hari terakhir.",
+      comparisonLabel: "dari 30 hari sebelumnya",
+      chartDescription: "Penjualan bersih selama tiga puluh hari terakhir.",
+      topProductsDescription: "Berdasarkan 30 hari terakhir.",
+      currentStart,
+      currentEnd,
+      previousStart: addUtcDays(currentStart, -30),
+      previousEnd: currentStart,
+      trendStart: currentStart,
+      trendEnd: currentEnd,
+    };
+  }
+
+  if (range === "thisMonth") {
+    const currentStart = getJakartaMonthStartUtc(now);
+    const currentEnd = tomorrowStart;
+    const currentDurationMs = currentEnd.getTime() - currentStart.getTime();
+
+    return {
+      range,
+      label: "Bulan ini",
+      description: "Ringkasan operasional toko untuk bulan berjalan.",
+      comparisonLabel: "dari periode sebelumnya",
+      chartDescription: "Penjualan bersih selama bulan berjalan.",
+      topProductsDescription: "Berdasarkan bulan ini.",
+      currentStart,
+      currentEnd,
+      previousStart: new Date(currentStart.getTime() - currentDurationMs),
+      previousEnd: currentStart,
+      trendStart: currentStart,
+      trendEnd: currentEnd,
+    };
+  }
+
+  const currentStart = todayStart;
+  const currentEnd = tomorrowStart;
+
+  return {
+    range: "today",
+    label: "Hari ini",
+    description: "Ringkasan operasional toko hari ini berdasarkan data transaksi, stok, shift, dan hardware terbaru.",
+    comparisonLabel: "dari kemarin",
+    chartDescription: "Penjualan bersih selama tujuh hari terakhir.",
+    topProductsDescription: "Berdasarkan penjualan hari ini.",
+    currentStart,
+    currentEnd,
+    previousStart: getJakartaDayStartUtc(now, -1),
+    previousEnd: currentStart,
+    trendStart: addUtcDays(currentStart, -6),
+    trendEnd: currentEnd,
+  };
+}
+
 function getJakartaDateKey(date: Date) {
   const parts = getJakartaDateParts(date);
 
@@ -77,18 +235,26 @@ function getJakartaShortDateLabel(date: Date) {
   }).format(date);
 }
 
-function createTrendSkeleton(now: Date): AdminDashboardTrendPoint[] {
-  return Array.from({ length: 7 }, (_, index) => {
-    const start = getJakartaDayStartUtc(now, index - 6);
+function createTrendSkeleton({
+  start,
+  end,
+}: {
+  start: Date;
+  end: Date;
+}): AdminDashboardTrendPoint[] {
+  const points: AdminDashboardTrendPoint[] = [];
 
-    return {
-      dateKey: getJakartaDateKey(start),
-      label: getJakartaShortDateLabel(start),
+  for (let cursor = start; cursor < end && points.length < 31; cursor = addUtcDays(cursor, 1)) {
+    points.push({
+      dateKey: getJakartaDateKey(cursor),
+      label: getJakartaShortDateLabel(cursor),
       revenue: 0,
       transactionCount: 0,
       itemSold: 0,
-    };
-  });
+    });
+  }
+
+  return points;
 }
 
 function toNumber(value: string | number | null | undefined) {
@@ -218,8 +384,11 @@ function createActivityDescription({
   return `${readString(afterData.entityName) ?? "Data operasional"} · ${timeLabel}`;
 }
 
-function createEmptyDashboard(): AdminDashboardData {
+function createEmptyDashboard(
+  period: AdminDashboardPeriod & { trendStart?: Date; trendEnd?: Date },
+): AdminDashboardData {
   return {
+    period,
     summary: {
       revenue: { current: 0, previous: 0 },
       transactionCount: { current: 0, previous: 0 },
@@ -230,7 +399,10 @@ function createEmptyDashboard(): AdminDashboardData {
       activeShifts: 0,
       failedHardwareJobsToday: 0,
     },
-    trend: createTrendSkeleton(new Date()),
+    trend: createTrendSkeleton({
+      start: period.trendStart ?? period.currentStart,
+      end: period.trendEnd ?? period.currentEnd,
+    }),
     topProducts: [],
     recentTransactions: [],
     operationalAlerts: [
@@ -248,19 +420,22 @@ function createEmptyDashboard(): AdminDashboardData {
 
 export async function getAdminDashboardData(
   auth: AuthContext,
+  range: AdminDashboardPeriodRange = "today",
 ): Promise<AdminDashboardData> {
   const outletIds = auth.outlets.map((outlet) => outlet.id);
+  const now = new Date();
+  const period = createPeriodMetadata({ range, now });
 
   if (outletIds.length === 0) {
-    return createEmptyDashboard();
+    return createEmptyDashboard(period);
   }
 
-  const now = new Date();
-  const todayStart = getJakartaDayStartUtc(now);
-  const tomorrowStart = getJakartaDayStartUtc(now, 1);
-  const yesterdayStart = getJakartaDayStartUtc(now, -1);
-  const trendStart = getJakartaDayStartUtc(now, -6);
-  const topProductStart = getJakartaDayStartUtc(now, -29);
+  const currentStart = period.currentStart;
+  const currentEnd = period.currentEnd;
+  const previousStart = period.previousStart;
+  const previousEnd = period.previousEnd;
+  const trendStart = period.trendStart;
+  const trendEnd = period.trendEnd;
   const staleAgentCutoff = new Date(now.getTime() - 5 * 60 * 1000);
   const localDaySql = sql<string>`to_char(${sales.completedAt} at time zone 'Asia/Jakarta', 'YYYY-MM-DD')`;
 
@@ -293,8 +468,8 @@ export async function getAdminDashboardData(
           eq(sales.organizationId, auth.organization.id),
           inArray(sales.outletId, outletIds),
           eq(sales.status, "completed"),
-          gte(sales.completedAt, todayStart),
-          lt(sales.completedAt, tomorrowStart),
+          gte(sales.completedAt, currentStart),
+          lt(sales.completedAt, currentEnd),
         ),
       ),
 
@@ -309,8 +484,8 @@ export async function getAdminDashboardData(
           eq(sales.organizationId, auth.organization.id),
           inArray(sales.outletId, outletIds),
           eq(sales.status, "completed"),
-          gte(sales.completedAt, yesterdayStart),
-          lt(sales.completedAt, todayStart),
+          gte(sales.completedAt, previousStart),
+          lt(sales.completedAt, previousEnd),
         ),
       ),
 
@@ -323,8 +498,8 @@ export async function getAdminDashboardData(
           eq(sales.organizationId, auth.organization.id),
           inArray(sales.outletId, outletIds),
           eq(sales.status, "completed"),
-          gte(sales.completedAt, todayStart),
-          lt(sales.completedAt, tomorrowStart),
+          gte(sales.completedAt, currentStart),
+          lt(sales.completedAt, currentEnd),
         ),
       ),
 
@@ -337,8 +512,8 @@ export async function getAdminDashboardData(
           eq(sales.organizationId, auth.organization.id),
           inArray(sales.outletId, outletIds),
           eq(sales.status, "completed"),
-          gte(sales.completedAt, yesterdayStart),
-          lt(sales.completedAt, todayStart),
+          gte(sales.completedAt, previousStart),
+          lt(sales.completedAt, previousEnd),
         ),
       ),
 
@@ -390,7 +565,8 @@ export async function getAdminDashboardData(
           eq(hardwareJobs.organizationId, auth.organization.id),
           inArray(hardwareJobs.outletId, outletIds),
           eq(hardwareJobs.status, "failed"),
-          gte(hardwareJobs.createdAt, todayStart),
+          gte(hardwareJobs.createdAt, currentStart),
+          lt(hardwareJobs.createdAt, currentEnd),
         ),
       ),
 
@@ -459,7 +635,7 @@ export async function getAdminDashboardData(
           inArray(sales.outletId, outletIds),
           eq(sales.status, "completed"),
           gte(sales.completedAt, trendStart),
-          lt(sales.completedAt, tomorrowStart),
+          lt(sales.completedAt, trendEnd),
         ),
       )
       .groupBy(localDaySql)
@@ -481,8 +657,8 @@ export async function getAdminDashboardData(
           eq(sales.organizationId, auth.organization.id),
           inArray(sales.outletId, outletIds),
           eq(sales.status, "completed"),
-          gte(sales.completedAt, topProductStart),
-          lt(sales.completedAt, tomorrowStart),
+          gte(sales.completedAt, currentStart),
+          lt(sales.completedAt, currentEnd),
         ),
       )
       .groupBy(productMasters.id, productMasters.name)
@@ -505,6 +681,8 @@ export async function getAdminDashboardData(
         and(
           eq(sales.organizationId, auth.organization.id),
           inArray(sales.outletId, outletIds),
+          gte(sales.createdAt, currentStart),
+          lt(sales.createdAt, currentEnd),
         ),
       )
       .orderBy(desc(sales.createdAt))
@@ -554,7 +732,7 @@ export async function getAdminDashboardData(
     ]),
   );
 
-  const trend = createTrendSkeleton(now).map((point) => {
+  const trend = createTrendSkeleton({ start: trendStart, end: trendEnd }).map((point) => {
     const row = trendByDate.get(point.dateKey);
 
     return {
@@ -563,6 +741,78 @@ export async function getAdminDashboardData(
       transactionCount: row?.transactionCount ?? 0,
     };
   });
+
+  const topProductIds = topProductRows.map((row) => row.productId);
+  const topProductItemRows =
+    topProductIds.length > 0
+      ? await db
+          .select({
+            productId: productMasters.id,
+            itemId: productItems.id,
+            sku: productItems.sku,
+            barcode: productItems.barcode,
+            itemName: sql<string>`coalesce(
+              ${productItems.displayName},
+              ${productMasters.name},
+              ${productItems.sku}
+            )`,
+            itemSold: count(),
+            revenue: sql<number>`coalesce(sum(${saleItems.finalPriceAmount}), 0)`.mapWith(
+              Number,
+            ),
+          })
+          .from(saleItems)
+          .innerJoin(sales, eq(saleItems.saleId, sales.id))
+          .innerJoin(
+            productItems,
+            eq(saleItems.productItemId, productItems.id),
+          )
+          .innerJoin(
+            productMasters,
+            eq(productItems.productMasterId, productMasters.id),
+          )
+          .where(
+            and(
+              eq(sales.organizationId, auth.organization.id),
+              inArray(sales.outletId, outletIds),
+              inArray(productMasters.id, topProductIds),
+              eq(sales.status, "completed"),
+              gte(sales.completedAt, currentStart),
+              lt(sales.completedAt, currentEnd),
+            ),
+          )
+          .groupBy(
+            productMasters.id,
+            productItems.id,
+            productItems.sku,
+            productItems.barcode,
+            productItems.displayName,
+            productMasters.name,
+          )
+          .orderBy(desc(sql`coalesce(sum(${saleItems.finalPriceAmount}), 0)`))
+          .limit(80)
+      : [];
+
+  const topProductItemsByProductId = new Map<
+    string,
+    AdminDashboardTopProductItem[]
+  >();
+
+  for (const row of topProductItemRows) {
+    const productItemsForMaster =
+      topProductItemsByProductId.get(row.productId) ?? [];
+
+    productItemsForMaster.push({
+      itemId: row.itemId,
+      sku: row.sku,
+      barcode: row.barcode,
+      itemName: row.itemName,
+      itemSold: Number(row.itemSold ?? 0),
+      revenue: toNumber(row.revenue),
+    });
+
+    topProductItemsByProductId.set(row.productId, productItemsForMaster);
+  }
 
   const operationalAlerts: AdminDashboardOperationalAlert[] = [];
   const failedHardwareJobsToday = Number(
@@ -588,7 +838,7 @@ export async function getAdminDashboardData(
   if (failedHardwareJobsToday > 0) {
     operationalAlerts.push({
       id: "failed-hardware-jobs",
-      title: `${failedHardwareJobsToday} print job gagal hari ini`,
+      title: `${failedHardwareJobsToday} print job gagal pada periode ini`,
       description: "Cek Hardware Hub dan retry job yang gagal.",
       href: "/admin/operasional/hardware",
       tone: "danger",
@@ -677,6 +927,7 @@ export async function getAdminDashboardData(
   });
 
   return {
+    period,
     summary: {
       revenue: {
         current: todayRevenue,
@@ -706,6 +957,7 @@ export async function getAdminDashboardData(
       productName: row.productName,
       itemSold: Number(row.itemSold ?? 0),
       revenue: toNumber(row.revenue),
+      items: topProductItemsByProductId.get(row.productId) ?? [],
     })),
     recentTransactions: recentTransactionRows.map((row) => ({
       ...row,
