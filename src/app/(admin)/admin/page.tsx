@@ -233,7 +233,7 @@ function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
   ];
 
   return (
-    <div className="mt-6">
+    <div className="mt-6 min-w-0 overflow-hidden">
       <div className="relative h-[250px] w-full sm:h-[280px]">
         {highlightedPoint.revenue > 0 ? (
           <div
@@ -316,7 +316,7 @@ function SalesChart({ points }: { points: AdminDashboardTrendPoint[] }) {
         </div>
       </div>
 
-      <div className="ml-10 grid grid-cols-7 text-center text-[10px] text-[var(--muted)] sm:text-xs">
+      <div className="ml-10 grid min-w-0 grid-cols-7 overflow-hidden text-center text-[10px] text-[var(--muted)] sm:text-xs">
         {points.map((point) => (
           <span key={point.dateKey}>{point.label}</span>
         ))}
@@ -425,7 +425,7 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <div className="space-y-5 lg:space-y-6">
+    <div className="min-w-0 max-w-full overflow-x-hidden space-y-5 lg:space-y-6">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-950 sm:text-[28px]">
@@ -447,9 +447,9 @@ export default async function AdminDashboardPage() {
         </button>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-5">
-          <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+          <section className="grid min-w-0 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             {statisticCards.map(
               ({ label, value, metric, icon: Icon, iconClassName }) => {
                 const comparison = getComparison(metric);
@@ -503,7 +503,7 @@ export default async function AdminDashboardPage() {
             )}
           </section>
 
-          <section className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+          <section className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
             {operationalStatusCards.map(
               ({ label, value, description, icon: Icon, iconClassName }) => (
                 <article
@@ -530,7 +530,7 @@ export default async function AdminDashboardPage() {
             )}
           </section>
 
-          <section className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5">
+          <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold text-neutral-950">
@@ -553,8 +553,8 @@ export default async function AdminDashboardPage() {
             <SalesChart points={dashboard.trend} />
           </section>
 
-          <section className="grid gap-5 2xl:grid-cols-[0.9fr_1.25fr]">
-            <article className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5">
+          <section className="grid min-w-0 gap-5 2xl:grid-cols-[0.9fr_1.25fr]">
+            <article className="min-w-0 rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] sm:p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="font-semibold text-neutral-950">
@@ -574,30 +574,96 @@ export default async function AdminDashboardPage() {
               </div>
 
               {dashboard.topProducts.length > 0 ? (
-                <div className="mt-5 space-y-4">
+                <div className="mt-5 max-h-[560px] space-y-3 overflow-y-auto overscroll-contain pr-1">
                   {dashboard.topProducts.map((product) => (
-                    <div key={product.productId} className="flex items-center gap-3">
-                      <div className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--accent-soft)] text-xs font-semibold text-[var(--accent)]">
-                        {product.rank}
-                      </div>
+                    <details
+                      key={product.productId}
+                      open={product.rank === 1}
+                      className="group min-w-0 rounded-2xl border border-[var(--border)] bg-white/70"
+                    >
+                      <summary className="flex min-w-0 cursor-pointer list-none items-center gap-3 p-3 marker:content-none [&::-webkit-details-marker]:hidden">
+                        <div className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--accent-soft)] text-xs font-semibold text-[var(--accent)]">
+                          {product.rank}
+                        </div>
 
-                      <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--surface-muted)] text-[var(--accent)]">
-                        <ShoppingBag className="size-4" />
-                      </div>
+                        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--surface-muted)] text-[var(--accent)]">
+                          <ShoppingBag className="size-4" />
+                        </div>
 
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-neutral-900">
-                          {product.productName}
-                        </p>
-                        <p className="mt-0.5 text-xs text-[var(--muted)]">
-                          {formatInteger(product.itemSold)} item terjual
-                        </p>
-                      </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-neutral-900">
+                            {product.productName}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[var(--muted)]">
+                            {formatInteger(product.itemSold)} item terjual dari
+                            katalog ini
+                          </p>
+                        </div>
 
-                      <p className="shrink-0 text-xs font-medium text-neutral-700">
-                        {formatMoney(product.revenue)}
-                      </p>
-                    </div>
+                        <div className="hidden shrink-0 text-right sm:block">
+                          <p className="text-xs font-medium text-neutral-700">
+                            {formatMoney(product.revenue)}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-[var(--muted)]">
+                            total omzet
+                          </p>
+                        </div>
+
+                        <ChevronRight className="size-4 shrink-0 text-neutral-300 transition-transform group-open:rotate-90 group-hover:text-[var(--accent)]" />
+                      </summary>
+
+                      <div className="border-t border-[var(--border)] bg-[var(--surface-muted)]/60 px-3 py-3">
+                        <div className="mb-3 flex items-center justify-between gap-3 text-[11px] text-[var(--muted)]">
+                          <span>Item fisik yang terjual</span>
+                          <Link
+                            href={`/admin/produk/${product.productId}`}
+                            className="shrink-0 font-medium text-[var(--accent)] hover:underline"
+                          >
+                            Detail produk
+                          </Link>
+                        </div>
+
+                        {product.items.length > 0 ? (
+                          <div className="max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">
+                            {product.items.map((item) => (
+                              <div
+                                key={item.itemId}
+                                className="flex min-w-0 items-start gap-3 rounded-xl bg-white p-3"
+                              >
+                                <div className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
+                                  <ScanBarcode className="size-4" />
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-medium text-neutral-900">
+                                    {item.itemName}
+                                  </p>
+                                  <p className="mt-1 truncate text-[11px] text-[var(--muted)]">
+                                    SKU {item.sku} · Barcode {item.barcode}
+                                  </p>
+                                  <p className="mt-1 text-[11px] text-[var(--muted)] sm:hidden">
+                                    {formatMoney(item.revenue)}
+                                  </p>
+                                </div>
+
+                                <div className="hidden shrink-0 text-right sm:block">
+                                  <p className="text-xs font-semibold text-neutral-900">
+                                    {formatMoney(item.revenue)}
+                                  </p>
+                                  <p className="mt-1 text-[10px] text-[var(--muted)]">
+                                    {formatInteger(item.itemSold)}x terjual
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-[var(--border)] bg-white p-4 text-center text-xs text-[var(--muted)]">
+                            Detail item terjual belum tersedia untuk produk ini.
+                          </div>
+                        )}
+                      </div>
+                    </details>
                   ))}
                 </div>
               ) : (
@@ -607,7 +673,7 @@ export default async function AdminDashboardPage() {
               )}
             </article>
 
-            <article className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            <article className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
               <div className="flex items-center justify-between gap-4 p-4 sm:p-5">
                 <div>
                   <h2 className="font-semibold text-neutral-950">
@@ -693,7 +759,7 @@ export default async function AdminDashboardPage() {
           </section>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <section className="rounded-2xl border border-[var(--border)] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
             <h2 className="font-semibold text-neutral-950">Aksi Cepat</h2>
 

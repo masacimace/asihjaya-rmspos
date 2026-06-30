@@ -146,7 +146,7 @@ function SidebarContent({
           <Store className="size-5" />
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-full overflow-x-hidden">
           <p className="font-semibold tracking-wide text-neutral-950">
             ASIHJAYA
           </p>
@@ -280,7 +280,7 @@ export function AdminShell({
   const [isApprovalOpen, setIsApprovalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[var(--background)] lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[var(--background)] lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
       {/* Sidebar desktop */}
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-[var(--border)] bg-white p-5 lg:flex">
         <SidebarContent
@@ -326,9 +326,9 @@ export function AdminShell({
         </div>
       ) : null}
 
-      <div className="min-w-0">
+      <div className="min-w-0 max-w-full overflow-x-hidden">
         {/* Topbar */}
-        <header className="sticky top-0 z-40 flex h-20 items-center gap-3 border-b border-[var(--border)] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-40 flex h-20 w-full max-w-full min-w-0 items-center gap-3 overflow-x-hidden border-b border-[var(--border)] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
           <button
             type="button"
             aria-label="Buka navigasi"
@@ -398,7 +398,9 @@ export function AdminShell({
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-w-0 max-w-full overflow-x-hidden p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
       </div>
 
       <CameraScannerModal
